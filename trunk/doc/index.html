@@ -1,0 +1,413 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>pua.pl - a presence user agent</title>
+    <meta http-equiv="Content-Type" content="text/html; charset='iso-8859-1'" />
+    <link rel="stylesheet" type="text/css" href="wp.css" />
+    <meta name="description" content="pua.pl, a command line SIP/SIMPLE presence user agent" />
+    <meta name="keywords" content="SIP SIMPLE presence user agent command-line" />
+    <meta name="geo.country" content="DE" />        
+</head>
+<body id="page">
+
+    <div id="center">
+		<h2>pua.pl</h2>
+		
+pua.pl is a command-line presence user agent in terms of RFC 3856. 
+It uses SIP/SIMPLE to
+communicate to a server, and supports partly the following standards:
+rfc-3261 (SIP), rfc-3903 (PUBLISH), rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), 
+rfc-3863 (pidf). <p>
+
+It can do 3 things: 
+register at a sip server, publish presence information and subscribe and 
+watch to some other user's presence information. If you are not sure what 
+this means, read on with section intro.<p>
+<ol>
+	<li><a href="#intro">Intro</a></li> 
+    <li><a href="#use">How to use pua.pl</a></li>
+	<li><a href="#r">Register</a></li>
+	<li><a href="#s">Subscribe</a></li>
+	<li><a href="#p">Publish</a></li>
+	<li><a href="#o">Advanced Options</a></li>
+	<li><a href="#e">More on --exec</a></li>
+	<li><a href="#d">Download and Install</a></li>
+</ol>
+
+<h3><a name="intro">Intro</a></h3>
+
+Here, presence means the willingness and ability of a user to communicate with
+other users on the network. The presence information gives the way how to 
+to communicate. Consider the following example: you would like to be contacted 
+via email, only in urgent cases on your mobile phone. The presence information 
+might include the following: <p>
+<ul>
+  <li>your id (sip-id)</li>
+  <li>a so-called tuple foreach means of communication, i.e. one for the 
+    email and one for the mobile phone</li>
+  <li>the priority of the email higher than the priority of the phone, as 
+    the email is the prefered way</li>
+  <li>a kind of textual note, like 'If it is urgent, just call me on the mobile'</li>
+</ul><p>
+If this information is published, everybody knowing the sip-id (and having 
+permission) can check it, before contacting you, so the idea is to have no 
+more calls like "sorry if i disturb you but ...". Publishing means, the 
+presence information is transmitted to a public server. On the other hand, 
+if one of your friends wants to call you, and first wants to check your 
+presence information, she subscribes to it, i.e. she tells the presence 
+server that she would like to receive it, and also receive further 
+notifications the moment it changes. <p>
+
+Presence information can be provided for almost any way of communication: 
+email, telephony, instant messaging, Push-to-talk, ... <p>
+
+The whole system works only if it is possible to publish presence information 
+from not just one PC, but from any communication device, like PDAs, laptops. 
+Another example: you plan to go on holiday, and you set your presence 
+information for to 'closed' (means offline). During your holiday, you find a 
+nice internet cafe, and you go there for a chat with your friends. So you 
+would like to subscribe for their presence status. This time server has to 
+send the notifications to the pc in the internet cafe. The process of telling 
+the server which device is connected to your sip-id is called registration, 
+i.e. the software running on the PC in the internet cafe registers at the 
+presence server. <p>
+
+
+<h3><a name="use">How to use pua.pl</a></h3>
+
+The 3 operations register, subscribe
+and publish can be used in any combination. For each of the operations, there
+are two modes possible 
+<ol>
+<li> Run and refresh untill program is ended: For instance if pua.pl
+     should publish presence information, it will repeatedly send it to 
+     the server in order to refresh it, until pua.pl is ended. On ending,
+     the presence information will be removed from the server. This is the
+     default behaviour.<p></li>
+
+<li> Run once: pua.pl will register (resp. publish/notify) only once, and then
+     it terminates. See the --xxx-once switches<p></li>
+</ol>
+
+pua.pl is only a presence client, it can send SUBSCRIBE requests and can 
+process NOTIFY requests, but does not to support direct subscriptions from 
+other endpoints - instead a presence server is expected to handle this. <p>
+
+pua.pl is configured with command line options, not with config files. This
+makes it a bit inconvenient to use for human beings - the intention was to make
+its usable from other scripts or programs. These are the common command line 
+options required nearly for all operations:<p>
+<div class="item">
+  <code>--my-sip-id=uri</code> (short form: <code>-i=uri</code>) to set your
+    SIP identity, usualy a URI of the form '<code>sip:myname@domain.org</code>'. <p>
+
+  <code>--proxy=server (-x=server)</code> for the server name of the SIP proxy server,
+    e.g. <code>-x=iptel.org</code><p>
+
+  <code>--username=name (-u=name)</code> Username for authentification at the remote
+    server<p>
+
+  <code>--password=name (-pw=name)</code>  Password for authentification at the remote
+    server, in combination with -u.
+</div>
+
+<h3><a name="r">Register</a></h3>
+
+In order to use pua.pl to register at a SIP server, additionally some 
+parameters need to be specified on the command line:<p>
+<div class="item">
+  <code>--register</code> (short form: <code>-r</code>) to enable register operation at all.<p>
+
+  <code>--registrar=uri (-rs=uri)</code> to specify the name of the registrar server,
+    an uri like 'sip:someprovider.net:5060'. If no registrar is specified, 
+    the register request will be sent to a server name constructed 
+    from your address (as specified with <code>--my-id</code>). E.g. for a 
+    given address <code>--my-sip-id=sip:myname@domain.org</code>, the registrar 
+    will be guessed as 'sip:domain.org'.<p>
+</div>
+
+Some examples: register for the sip-id ron@iptel.org using the proxy server
+sipserv.com, the registrar is iptel.org (taken the domain from iptel.org)<p>
+<div class="item"><code>
+  pua.pl -r -i=ron@iptel.org -x=sipserv.com<p>
+</code></div>
+
+Often the SIP proxy server and the registrar are on the same machine. The
+registrar is explicitly specified with -rs:<p>
+<div class="item"><code>
+  pua.pl -r -i=ron@iptel.org -x=iptel.org -rs=iptel.org<p>
+</code></div>
+
+Iptel will not accept register requests without authentification, that can be
+seen from the 401 error code. Do username/password should be specified as well:<p>
+<div class="item"><code>
+  pua.pl -r -i=ron@iptel.org -x=iptel.org -u ron -pw 'how cute'<p>
+</code></div>
+
+
+<h3><a name="s">Subscribe</a></h3>
+
+To subscribe (or to watch) the presence information of some other user,
+the command line options are needed:<p>
+<div class="item">
+  <code>--subscribe (-s)</code> to enable subscribe operation<p>
+
+  <code>--watch-id=uri (-w=uri)</code>It sets the uri of the person whose presence
+    status is to be subscribed, i.e. the uri of the person you 
+    would like to know when she is online, and how to contact.
+    The uri is usually something like 'sip:moby@sea.com'.<p>
+</div>
+Examples for subscribe: watch the presence information of Uli, she has 
+the sip-id sip:uli@t-sip.de<p>
+<div class="item"><code>
+  pua.pl -s -i=ron@provider.net -x=provider.net -w=sip:uli@t-sip.de<p>
+</code></div>
+
+The proxy server provider.net is responsible to forward the request to the
+presence server, the one who knows something about sip:uli@t-sip.de.<p>
+
+Sometimes you can only subscribe when you are registered. Then both
+-r and -s can be combined:<p>
+<div class="item"><code>
+  pua.pl -r -s -i=ron@provider.net -x=provider.net -w=sip:uli@t-sip.de<p>
+</code></div>
+
+When the server sends some information about Uli's presence, pua.pl
+prints it on the console. For cases where this is not sufficient, it is
+possible to pass a command to pua.pl, which is then executed. See 
+<code>--exec-notify</code> below.<p>
+ 
+It is not possible to subscribe to more than one sip-id, i.e. pua.pl can 
+be called only with one -w parameter. However you can invoke more than
+one instance of pua.pl. It is important that the second instance uses
+a diffrent port number because the first instance occupies the default
+port 5060, i.e.<p>
+<div class="item"><code>
+  pua.pl -s -i=ron@provider.net -x=provider.net -w=sip:uli@t-sip.de -lp 5059<p>
+</code></div>
+
+runs it on local port 5059 (instead of 5060, which is the default).
+
+
+
+<h3><a name="p">Publish</a></h3>
+
+To publish a contact address, this are the options. pua.pl supports only
+one tuple per publish operation<p>
+<div class="item">
+  <code>--publish (-p)</code> to enable publishing<p>
+  
+  <code>--contact=uri (-c=uri)</code>: The contact address to be published. It
+    can be any kind of address, like email or a telephone number. The uri 
+    should include the scheme, e.g. <code>--contact tel:+09012345678</code>, or 
+    <code>--contact mailto:someone@example.com</code> are valid.<p>
+
+  <code>--status=stat</code> It is the basic status of your contact id (resp.
+    sip id, in case <code>--contact</code> is not used), as it is transmitted 
+    to the server, and published to other users. Expected values 
+    for stat are: 'open' means you are open for communication 
+    (this is the default), 'closed' means you don't want to be 
+    contacted, or you are offline on this address. Other values
+    are possibly not supported by the server.<p>
+
+  <code>--note=text</code> It specifies some arbitrary text that will be 
+    transmitted to the server, and published to other users. 
+    E.g. "I'm in Tokio next week."
+
+Example for publish, to tell the presence server that the person with the
+sip-id ron@iptel.org is open for contact on the address 
+ron@p5499A632.dip.t-dialin.net for instant messaging:<p>
+<div class="item"><code>
+  pua.pl -p --my-id=sip:ron@iptel.org -x=iptel.org --status=open --contact im:ron@p5499A632.dip.t-dialin.net<p>
+</code></div>
+
+
+<h3><a name="o">Advanced options</a></h3>
+
+<div class="item">
+  <code>-se, --subscribe-exp=duration</code> To be used in combination with <code>-s</code>
+    (subscribe). Specifies the duration in seconds after 
+    subscription should be refreshed, the shorter it is, the more 
+    traffic is generated. Default value is 3600.<p>
+
+  <code>-pe, --publish-exp=duration</code> To be used in combination with <code>-p</code>
+    (publish). Specifies the duration in seconds how long a 
+    published presence is valid. It controls how often the presence 
+    status will be refshed. The shorter it is, the more traffic is 
+    generated. Default value is 3600.<p>
+
+  <code>-re, --register-exp=duration</code> To be used in combination with <code>-r</code>
+    (register). Specifies the duration in seconds how long a 
+    registration presence is valid, also it controls how often it 
+    will be refshed. The shorter it is, the more traffic is 
+    generated. Default value is 3600.<p>
+
+  <code>--my-host=name</code> Hostname of this machine, as used in Via: headers
+    and Contact headers, usually this is automatically detected. 
+    But in some cases it makes sense to overwrite it, for instance
+    when the machine is in a local network. <p>
+
+  <code>-lp, --local-port=number</code> Port number where to wait for SIP 
+    messages on this local machine, default is 5060.<p>
+
+  <code>-rp, --remote-port=number</code> Port number of the SIP proxy, i.e. where 
+    to send SIP messages on the remote machine. Default is 5060.<p>
+
+  <code>-en, --exec-notify=cmd</code> Run cmd each time a notification of
+    somebody's else presence status is received. Works only in 
+    combination with <code>-s</code> (subscribe). The command gets a descriptive
+    description of the status on stdin. Example: <code>-en 'cat &gt; /tmp/pres'</code>
+    will re-write the file /tmp/pres each time the server sends a
+    notification about the watched presentity. The file /tmp/pres
+    then contains a text like 'xyz open for communication'. See the
+    other <code>--exec</code> optiions for less descriptive methods. Please note:
+    depending on the server settings and on <code>-re</code>, cmd might be 
+    executed quite often.<p>
+
+  <code>-eo, --exec-open=cmd</code> Run cmd each time a basic presence status 
+    changes to open. The command cmd is invoked with a number of 
+    switches on its own: <code>-e</code> entity name (usually a address in form
+    sip:me@somwhere.net), <code>-s</code> status, here 'open', <code>-c contact address, 
+    -p priority, -t timestamp</code>. A switch may be omitted, in case the 
+    information is not available. Additionally, cmd may get on its 
+    stdin an multi-line note. Cmd is invoked for each tuple, i.e. 
+    it might be called more than once for one entity.<p>
+
+  <code>-ec, --exec-closed=cmd</code> As <code>-eo</code>, but here the status has to change
+    from open to closed (or from open to not available).<p>
+
+  <code>-ro, --register-once</code> Register only once and then exit (assuming
+    no <code>-s/-p given</code>). This is expected in combination with <code>-r</code>. If
+    not set, the program will continue to run, and refresh the
+    registration each time before it expires - this is the default.<p>
+
+  <code>-po, --publish-once</code> Publish the presence only once and then 
+    exit (assuming no <code>-r/-s given</code>), i.e. not refresh after expiry. <p>
+
+  <code>-no, --notify-once</code> Leave the program after the first notification
+    is received (assuming no <code>-p/-r</code> given). This is expected in 
+    combination with <code>-s</code>. If not set, the program will continue to run, 
+    and refresh the subscription each time before it expires.<p>
+    
+  <code>--login=name</code> local login name, as used in the Contact: header 
+    field. On default the software will try to guess.<p>
+
+  <code>-d, --debug=n</code> Set the debug level, values of n: 0 (quiet) up to
+    5 (very noisy)<p>
+</div>
+
+<h3><a name="e">More on --exec</a></h3>
+
+  For example, the program 'myprog' shall call everytime the presence 
+  changes to open, then pua.pl is called with switch <code>--exec-open 'myprog'</code>. 
+  Now, if the watched person (having for instance the sip address 
+  sip:joseph@sipserv.de) goes online using the contact address 
+  im:jo@jupm.org with the prio 0.5, the command 'myprog' will be called 
+  like this:<p>
+  
+<div class="item"><code>
+    myprog -e sip:joseph@sipserv.de -s open -c im:jo@jupm.org -p 0.5<p>
+</code></div>
+
+  The arguments for cmd are always in the same order, but only the first 2 are 
+  always present (<code>-e, -s</code>). The watched person can specify more than one contact
+  address, he/she uses. For instance, Jo also has given an email address 
+  mailto:jo@yahoo.com, and Jo actually preferes to be contacted by email, as
+  he is busy with a meeting. So he sets the priority of the email to 1, and 
+  additionally gives a note "Preferably after 8 o'clock" to his im: address.
+  With this setup, pua.pl will call myprog twice, as follows:<p>
+  
+<div class="item"><code>
+    myprog -e sip:joseph@sipserv.de -s open -c mailto:jo@yahoo.com -p 1<br>
+    myprog -e sip:joseph@sipserv.de -s open -c im:jo@jupm.org -p 0.5<p>
+</code></div>
+ 
+  The second call to myprog gets the text "Preferably after 8 o'clock" piped on 
+  stdin. The arguments to myprog are simply appended, so if you wish to use
+  redirection like <code>--exec-open 'echo &gt; /tmp/t1'</code>, it will not work as expected.
+  Instead, it will call <code>"echo &gt; /tmp/t1 -e sip:joseph@sipserv.de..."</code><p>
+
+  The last argument <code>-t timestamp</code> usually gives the time when the presence 
+  information was created, it should be coded using IMPP datetime format 
+  [RFC3339], a valid value would be 2005-06-21T16:49:29Z.<p>
+
+  Unlike the other <code>--exec</code> options, pua.pl called with <code>--exec-notify=cmd</code>
+  will cause cmd called everytime a notification is received. For example, running
+  the program like this<p>
+  
+<div class="item"><code>
+    pua.pl -en 'xmessage -file -' -s -watch sip:betty@srv.net ...<p>
+</code></div>
+
+  will invoke xmessage on each notificaton, i.e. it shows a X window with
+  a string indicating the status of Betty.<p>
+
+
+<h3><a name="d">Download and Installation</a></h3>
+
+Get the latest sources with <code>svn checkout svn://svn.berlios.de/pua-pl</code><p>
+
+Current version of pua.pl is 1.$Rev$.<p>
+
+pua.pl is tested with linux, perl v5.8.0 (which is pretty old). I think
+it could run with windows/cygwin, but I didn't try. <p>
+
+It requires perl, and POE, see <a href="http://poe.perl.org">poe.perl.org</a>. The quick way to install poe:<p>
+  
+<div class="item"><code>
+  % perl -MCPAN -e shell<br>
+  cpan&gt; install POE <p>
+</code></div>
+  
+pua.pl may be copied only under terms of the GNU General Public License,
+see <a href="http://www.gnu.org/copyleft/gpl.html">http://www.gnu.org/copyleft/gpl.html</a>.<p>
+
+Running pua.pl behind a firewall is not possible, unless the firewall
+is configured that it forwards all SIP traffic to the local machine. 
+Usually that means port 5060 on the firewall has to be opened. When
+pua.pl is used on a machine which is not directly connected to the 
+internet, instead it is on a subnet with a IP only valid within the subnet,
+and there is NAT (network address translation) performed, then there this is 
+a problem - unless the gateway supports SIP, but this is not very likey.
+I worked around this problem by using switch <code>--my-host=&lt;dns_name_of_my_router&gt;</code>
+but this is not a approach that works in general.<p>
+
+This software comes with absolutely no warranty, see again
+<a href="http://www.gnu.org/copyleft/gpl.html">http://www.gnu.org/copyleft/gpl.html</a>. 
+By using a powerful interpreter like perl, there is some risk that this software 
+can be missused to interpret some malicious piece of code being received in a SIP message.
+This is a severe problem, I've tried my best to avoid this, but there is 
+still a risk. If you are in an environment where you can't accept the risk, 
+better don't use it.<p>
+
+Feel invited to mail me your comments and suggestions!
+
+		<script type="text/javascript">
+<!--
+	var first = 'ma';
+	var second = 'il';
+	var third = 'to:';
+	var address = 'yivi';
+	var domain = 'holzhey'+'&#46;&#100;&#101;';
+	document.write('<a href="');
+	document.write(first+second+third);
+	document.write(address);
+	document.write('&#64;');
+	document.write(domain);
+	document.write('" title="email Conny ');
+	document.write('Holzhey">');
+	document.write('Conny ');
+	document.write('Holzhey<\/a>');
+// -->
+</script>
+	
+<p>
+<div align="center"><br>
+<a href="http://developer.berlios.de">
+<img src="http://developer.berlios.de/bslogo.php?group_id=3253&type=1" width="124" height="32" border="0" alt="BerliOS Logo"></a><br>
+	
+    </div>
+	
+</body>
+</html>

@@ -1,0 +1,46 @@
+body    {
+	font-family: Tahoma,Verdana,Geneva,Arial,Helvetica,sans-serif;
+	font-size: 10pt;
+	line-height: 14pt;
+	background-image:url(bg.jpg);
+}
+
+h3 { 
+	margin-top:30pt;
+}
+
+.item {
+	margin-left:10pt;
+	margin-right:10pt;
+}
+
+*#center    {
+	border-top-width: 1pt;
+	border-right-width: 1pt;
+	border-bottom-width: 1pt;
+	border-left-width: 1pt;
+		
+	border-left-color: rgb(204, 204, 204);
+	border-top-color: rgb(204, 204, 204);
+	border-right-color: rgb(204, 204, 204);
+	border-bottom-color: rgb(204, 204, 204);
+	
+	border-top-style: solid;
+	border-right-style: solid;
+	border-bottom-style: solid;
+	border-left-style: solid;
+
+	margin-top: 20pt;
+	margin-right: 12%;
+	margin-bottom: 20pt;
+	margin-left: 12%;
+	
+	padding-left: 20pt;
+	padding-top: 10pt;
+	padding-right: 20pt;
+	padding-bottom: 20pt;
+
+    position: relative;
+	background-repeat: repeat-x;
+	background-color: white;
+}
