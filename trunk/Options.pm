@@ -43,7 +43,7 @@ my $VERSION = '1.'; # main version
 
 # append subversions revision number
 my $svn_version = '$LastChangedRevision$'; # will be replaced by svn
-if ($svn_version = ~ /LastChangedRevision: (\d+)/) {
+if ($svn_version =~ /LastChangedRevision: (\d+)/) {
     $VERSION .= $1;
 }
 

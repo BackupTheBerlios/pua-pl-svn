@@ -4,4 +4,4 @@ killall -q pua.pl
 sleep 1
 echo pua.pl $*
 cd ..
-pua.pl -d 5   -x localhost  $* &
+pua.pl -d 0  -x localhost  $* &

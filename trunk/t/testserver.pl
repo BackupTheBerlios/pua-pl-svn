@@ -473,7 +473,7 @@ Proxy-Authenticate: Digest realm="iptel.org", nonce="41a27b3b6184801b57dba727f73
 
     }
     elsif ($heap->{'int_cnt'} == 10) {
-	my $l = get_header('Authorization', $input);
+	my $l = get_header('Proxy-Authorization', $input);
 	like($l, qr/^Proxy-Authorization: Digest username="abc", realm="iptel.org", uri="sip:nobody${AT}nowhere.com:5059", nonce="41a27b3b6184801b57dba727f73804c29f91f1b3", response=/, 
 	   'PUBLISH proxy digest authentification');
 
