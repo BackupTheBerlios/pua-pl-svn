@@ -351,10 +351,14 @@ Get the latest sources with <code>svn checkout svn://svn.berlios.de/pua-pl</code
 pua.pl is tested with linux, perl v5.8.0 (which is pretty old). I think
 it could run with windows/cygwin, but I didn't try. <p>
 
-It requires perl, and POE, see <a href="http://poe.perl.org">poe.perl.org</a>. The quick way to install poe:<p>
+It requires perl, XML::Parser (which requires the 
+<a href="http://www.libexpat.org/">Expat library</a>) and POE, see 
+<a href="http://poe.perl.org">poe.perl.org</a>. The quick way to install 
+both:<p>
   
 <div class="item"><code>
   % perl -MCPAN -e shell<br>
+  cpan&gt; install XML::Parser <br>
   cpan&gt; install POE <p>
 </code></div>
   

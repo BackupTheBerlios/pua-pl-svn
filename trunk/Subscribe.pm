@@ -603,6 +603,81 @@ sub run_exec {
 
 
 #
+# construct a ok 200 message in responds to the NOTIFY
+# the Via headers, the From, To Call-ID and CSeq headers are taken
+# from the NOTIFY, and should be passed with the headers param
+
+sub get_notify_ok_msg {
+    my ($headers) = $_[0];
+
+    my $msg =
+      'SIP/2.0 200 OK'.$CRLF.
+      $headers.
+      'User-Agent: '.$SIP_USER_AGENT.$CRLF.
+      'Content-Length: 0'.$CRLF.$CRLF;
+
+    return $msg;
+}
+
+
+# 
+# called when a SIP message is received. The function checks if it is
+# subscribe relevant, and if yes, it returns the name of the internal
+# message to be posted, like 'subscribed', or undef in case of not relevant.
+# If the message is a notify, it also sends the response
+
+sub check_message {
+    my $self = shift;
+    my ($header, $content, $human_addr) = @_;
+    my ($l0, $l, $ok, $ret);
+    my $return_headers = '';
+
+    # get the cseq line, for the method name    
+    foreach $l (split("\n", $header)) {
+        unless (defined $l0) { $l0 = $l; } # keep the first one
+        if ($l =~ /^CSeq\s*:\s*\d+\s+SUBSCRIBE/i) {        
+            my $code = $self->get_message_code($header);
+            if ($code >= 200 && $code <= 299) {
+                $ret = 'subscribed';
+            } else {
+                $ret = 'subfailed';
+            }
+            last;
+        }
+
+        # for notify, get the header lines that will be required for the
+        # sip 200 OK message responds
+	if ($l =~ /^Via:\s*SIP\/2\.0/i) {
+            if (defined $human_addr) {
+                $return_headers .= $l.';received='.$human_addr . $CRLF;
+            } else {
+                $return_headers .= $l . $CRLF;
+            }
+	} elsif ($l =~ /^CSeq\s*:\s*(\d)+\s+NOTIFY/i) {
+  	    $return_headers .= $l . $CRLF;
+	} elsif ($l =~ /^From\s*:/i) {
+  	    $return_headers .= $l . $CRLF;
+	} elsif ($l =~ /^To\s*:/i) {
+  	    $return_headers .= $l . $CRLF;
+	} elsif ($l =~ /^Call-ID\s*:/i) {
+  	    $return_headers .= $l . $CRLF;
+	}
+
+    } 
+
+    # send a ok reply to the server, if it was a notify
+    
+    if ($l0 =~ /^NOTIFY/) {    
+        $ok = get_notify_ok_msg($return_headers);
+	$log->write(SPEW, "server: reply with $ok");
+        $ret = 'notified';
+    }
+
+    return ($ret, $ok);
+}
+
+
+#
 # subclass for hiding the presence tuple
 
 package Subscribe::Tuple;

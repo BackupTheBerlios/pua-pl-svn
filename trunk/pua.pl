@@ -65,30 +65,7 @@ my $CRLF = "\015\012";
 my $state = 'initializing'; 
 
 
-##################### sip helpers ###########################################
 
-# a number of simple functions required to build up the protocol
-# specific parameters
-
-
-
-
-#
-# construct a ok 200 message in responds to the NOTIFY
-# the Via headers, the From, To Call-ID and CSeq headers are taken
-# from the NOTIFY, and should be passed with the headers param
-
-sub get_notify_ok_msg {
-    my ($headers) = $_[0];
-
-    my $msg =
-      'SIP/2.0 200 OK'.$CRLF.
-      $headers.
-      'User-Agent: '.$SIP_USER_AGENT.$CRLF.
-      'Content-Length: 0'.$CRLF.$CRLF;
-
-    return $msg;
-}
 
 
 
@@ -254,7 +231,7 @@ sub control {
 
     } else {
         # should not happen
-        die("$SIP_USER_AGENT: Invalid internal main state");        die("$SIP_USER_AGENT: Invalid internal main state");
+        die("$SIP_USER_AGENT: Invalid internal main state");
     }
 }
 
@@ -305,39 +282,42 @@ sub _start {
 
 
 #
-# session method, called when the client gets a return
+# session method, called when the client gets a return message, or a notify
 
-sub sip_got_response {
-    my ( $heap, $session, $header, $content ) = @_[ HEAP, SESSION, ARG0, ARG1 ];
-    $log->write(SPEW, "sip_got_response: got header '$header'");
+sub sip_got_message {
+    my ( $heap, $session, $header, $content) 
+        = @_[ HEAP, SESSION, ARG0, ARG1];
+
+    $log->write(SPEW, "sip_got_message: got header '$header'");
     if (defined $content) {
-        $log->write(SPEW, "sip_got_response: got content '$content'");
+        $log->write(SPEW, "sip_got_message: got content '$content'");
     } else {
-        $log->write(SPEW, "sip_got_response: got no content");
+        $log->write(SPEW, "sip_got_messagee: got no content");
     }
 
-    my $code = understand_message($header, $content);
+    # let the handlers deal with the message, return value is a string which will
+    # be interpreted as message to be posted, one of 'register', 'regfailed'
+    # 'subscribed', 'subfailed', 'notified', etc.
 
-    if ($code >= 200 && $code <= 299) {
-        # inform control function
-        if ($header =~ /REGISTER/) {
-            $_[KERNEL]->post('pua', 'registered', $header, $content);
-        } elsif ($header =~ /SUBSCRIBE/) {
-            $_[KERNEL]->post('pua', 'subscribed', $header, $content);
-        } elsif ($header =~ /PUBLISH/) {
-            $_[KERNEL]->post('pua', 'published', $header, $content);
-        } elsif ($header =~ /NOTIFY/) {
-            $_[KERNEL]->post('pua', 'notified', $header, $content);
-	}
-    } else {
-        # all other codes are treated as errors
-        if ($header =~ /REGISTER/) {
-            $_[KERNEL]->post('pua', 'regfailed', $header, $content);
-        } elsif ($header =~ /SUBSCRIBE/) {
-            $_[KERNEL]->post('pua', 'subfailed', $header, $content);
-        } elsif ($header =~ /PUBLISH/) {
-            $_[KERNEL]->post('pua', 'pubfailed', $header, $content);
+    my ($m, $reply, $done, $h);
+    $done = 0;
+    foreach $h (@handlers) {
+        ($m, $reply) = $h->check_message($header, $content, $heap->{'peer_address'});
+        if (defined $m) {
+            # inform control function
+            $_[KERNEL]->post(pua => $m => $header => $content);
+            if (defined $reply) { # in case of NOTIFY
+	        $_[KERNEL]->post(pua => send_udp_message => $reply => 0);
+            }
+            $done++;
         }
+    }
+
+    unless ($done) {
+        # nobody did something with this message, return a not implemented
+        # to the sip server
+        $reply = get_501($heap->{'peer_address'}, $header);
+        $_[KERNEL]->post(pua => send_udp_message => $reply => 0);
     }
 }
 
@@ -359,7 +339,7 @@ sub sip_send_message {
     if (exists $heap->{'tcp_failed'} && $heap->{'tcp_failed'} > 0) {
 
         # previous attempt via tcp failed, use udp instead
-        $kernel->post( pua => send_udp_message => $msg ); 
+        $kernel->post( pua => send_udp_message => $msg => 1); 
 
     } else {
 
@@ -393,7 +373,7 @@ sub sip_send_message {
 	        $log->write(INFO, "TCP Connection failed $_[ARG1] in '$_[ARG0]': $_[ARG2]".
 			    " ... will try UDP.");
 		$heap->{'tcp_failed'} = 1;
-	        $_[KERNEL]->post( pua => send_udp_message => $_[HEAP]->{'message'});
+	        $_[KERNEL]->post( pua => send_udp_message => $_[HEAP]->{'message'} => 1);
 		
 	    },
 
@@ -420,20 +400,24 @@ sub sip_send_message {
 }
 
 #
-# send a message via udp protocol to the server
+# send a message via udp protocol to the server. In case of a reply to the message
+# is expected, a timeout is started and the listen on the port is initiated
 
 sub udp_send {
-    my($kernel, $heap, $session, $message) 
+    my($kernel, $heap, $session, $message, $reply_expected) 
       = @_[KERNEL, HEAP, SESSION, ARG0];
 
-    # Reset flag indicating if we received something via udp, and start
-    # a timer. After expiry we will check that flag again, and in case it
-    # is unchanged, we know we didn't receive a reply
+    if ($reply_expected) {
 
-    $heap->{'udp_received'} = 0; 
-    $kernel->delay('timeout_udp', 10); # 10 seconds
+        # Reset flag indicating if we received something via udp, and start
+        # a timer. After expiry we will check that flag again, and in case it
+        # is unchanged, we know we didn't receive a reply
 
-    sip_wait_message($kernel, $heap); # start listening
+        $heap->{'udp_received'} = 0; 
+        $kernel->delay('timeout_udp', 10); # 10 seconds
+
+        sip_wait_message($kernel, $heap); # start listening
+    }
 
     my $host = inet_aton($options->{proxy});
     unless (defined $host) {
@@ -463,6 +447,7 @@ sub udp_timeout {
         # all went ok
     } else {
         # still waiting for responds
+        # actually this may not be an error ... FIXME
         die "$SIP_USER_AGENT: Timeout while sending SIP message via udp\n";
     }
 }
@@ -498,7 +483,6 @@ sub sip_wait_message() {
 
 sub udp_read {
     my($kernel, $heap, $session, $socket) = @_[KERNEL, HEAP, SESSION, ARG0];
-    my $return_headers = '';
     my $message;
     my $remote_address;
 
@@ -510,15 +494,12 @@ sub udp_read {
 
     my ( $peer_port, $peer_addr ) = unpack_sockaddr_in($remote_address);
     my $human_addr = inet_ntoa($peer_addr);
-
+    $heap->{'peer_address'} = $human_addr;
     $log->write(SPEW, "server: $human_addr : $peer_port sent us $message\n");
 
     my @lines = split($CRLF, $message, -1); # preserve trailing fields
 
     # process line-wise all the lines we have so far. 
-
-    # TODO: appending a newline to the last element 
-    # produces a different result than that what we received ...
 
     $heap->{'content'} = '';
     $heap->{'content_len'} = 0;
@@ -527,32 +508,6 @@ sub udp_read {
     my $l;
     foreach $l (@lines) {
         append_input($kernel, $heap, $l);
-
-        # get the header lines that will be required for the
-        # sip 200 OK message responds
-	if ($l =~ /^Via:\s*SIP\/2\.0/i) {
-  	    $return_headers .= $l.';received='.$human_addr . $CRLF;
-	} elsif ($l =~ /^CSeq:\s*(\d)+\s+NOTIFY/i) {
-  	    $return_headers .= $l . $CRLF;
-	} elsif ($l =~ /^From:/i) {
-  	    $return_headers .= $l . $CRLF;
-	} elsif ($l =~ /^To:/i) {
-  	    $return_headers .= $l . $CRLF;
-	} elsif ($l =~ /^Call-ID:/i) {
-  	    $return_headers .= $l . $CRLF;
-	}
-    }
-
-    # send a ok reply to the server, if it was a notify
-    # FIXME move to somewhere else
-    
-    if ($lines[0] =~ 'NOTIFY') {
-    
-        my $ok = get_notify_ok_msg($return_headers);
-	$log->write(SPEW, "server: reply with $ok");
-
-	send($socket, $ok, 0, $remote_address) == length($ok)
-	  || die("$SIP_USER_AGENT: server: message not (completely) sent");
     }
 }
 
@@ -563,7 +518,7 @@ sub udp_read {
 # udp or tcp
 
 sub append_input {
-    my ($kernel, $heap, $input) = @_;
+    my ($kernel, $heap, $input, $return_headers) = @_;
 
     if ($heap->{'content'} eq '') {
 
@@ -594,7 +549,7 @@ sub append_input {
 	    # finished with headers
 	    # inform main session, in case there is no content
 	    if ($heap->{content_len} == 0) {
-	        $kernel->post( pua => sip_got_response => $headers);
+	        $kernel->post( pua => sip_got_message => $headers);
 	    } 
 
 	    # miss use $heap->{content} a bit
@@ -620,56 +575,51 @@ sub append_input {
 	$heap->{content_len} -= length($input) + length($CRLF);
 	if ($heap->{content_len} == 0) {
 	    # finished, inform session and close this
-	    $kernel->post('pua' => sip_got_response 
-			        => $heap->{headers} 
-			        => $heap->{content});
+	    $kernel->post('pua' => sip_got_message 
+			        => $heap->{headers}
+                                => $heap->{content}); 
 	}
     }
 } # end append_input
 
 
-
 #
-# check if the code of the message was ok, and do some sanity
-# checks. This is for the part common to all sip messages
+# construct a 501 not implemented message message.
+# the Via headers, the From, To Call-ID and CSeq headers are taken
+# from the NOTIFY, and should be passed with the headers param
 
-sub understand_message {
-    my ($headers, $content) = @_;
-    my ($code, $status);
+sub get_501 {
+    my ($human_addr, $header) = @_;
+    my $return_headers = '';
+    my $l;
 
-    my @headers = split("\n", $headers);
-
-    $log->write(DEBUG, "c/s: got $headers[0]");
-
-    # look for the return code, in case of OK message
-    if ($headers[0] =~ /^SIP\/2\.0\s+(\d+)\s+(.*)$/) {
-        $code = $1;
-        $status = $2;
-        if ($code != 200 && $code != 202) {
-	    $log->write(WARN, $SIP_USER_AGENT.": SIP server returned $code, $status"); 
-            return $code;
+    foreach $l (split("\n", $header)) {
+	if ($l =~ /^Via:\s*SIP\/2\.0/i) {
+            if (defined $human_addr) {
+                $return_headers .= $l.';received='.$human_addr . $CRLF;
+            } else {
+                $return_headers .= $l . $CRLF;
+            }
+	} elsif ($l =~ /^CSeq\s*:\s*(\d)+\s+/i) {
+  	    $return_headers .= $l . $CRLF;
+	} elsif ($l =~ /^From\s*:/i) {
+  	    $return_headers .= $l . $CRLF;
+	} elsif ($l =~ /^To\s*:/i) {
+  	    $return_headers .= $l . $CRLF;
+	} elsif ($l =~ /^Call-ID\s*:/i) {
+  	    $return_headers .= $l . $CRLF;
 	}
-    } elsif ($headers[0] =~ /^NOTIFY\s+(.*)\s+SIP\/2\.0$/) {
-        # notify message
-        $code = 200; # ok
-    } else {
-        # problem with parsing
-        die("$SIP_USER_AGENT: Problem with parsing $headers[0], expecting 'SIP/2.0 ...'");
     }
 
-    my $h;
-    foreach $h (@headers[1..$#headers]) { # skip the first line
+    my $msg =
+      'SIP/2.0 501 Not Implemented'.$CRLF.
+      $return_headers.
+      'User-Agent: '.$SIP_USER_AGENT.$CRLF.
+      'Content-Length: 0'.$CRLF.$CRLF;
 
-        # check cseq number
-        # if ($h =~ /^\s*CSeq\s+(\d+)\s+/) {
-	#    if ($1 != $cseq_number+1) {
-        #        warn("CSeq number not matching in message $headers.");
-        #    }
-        # }    
-    } # end for each
-
-    return $code;
+    return $msg;
 }
+
 
 
 
@@ -679,7 +629,7 @@ sub understand_message {
 
 # map the states of the session to the functions
 POE::Session->create(
-    package_states => [ main => [ "_start", "sip_got_response" ] ],
+    package_states => [ main => [ "_start", "sip_got_message" ] ],
 
     # internal events are basically all mapped to sub control, to 
     # have all in one place

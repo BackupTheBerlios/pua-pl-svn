@@ -214,4 +214,32 @@ sub handle_message {
     }
 }
 
+
+# 
+# called when a SIP message is received. The function checks if it is
+# register relevant, and if yes, it returns the name of the internal
+# message to be posted, like 'regfailed', or undef in case of not relevant
+
+sub check_message {
+    my $self = shift;
+    my ($header, $content) = @_;
+    my $ret;
+    my $h0;
+
+    # get the cseq line, for the method name    
+    foreach $h0 (split("\n", $header)) {
+        if ($h0 =~ /^CSeq\s*:\s*\d+\s+REGISTER/i) {        
+            my $code = $self->get_message_code($header);
+            if ($code >= 200 && $code <= 299) {
+                $ret = 'registered';
+            } else {
+                $ret = 'regfailed';
+            }
+            last;
+        }
+    } 
+    return $ret;
+}
+
+
 1;

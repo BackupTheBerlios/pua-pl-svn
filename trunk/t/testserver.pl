@@ -685,7 +685,7 @@ sub init_register_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         $answer = $reg_fail_answer;
-	$kernel->post('test-server' => 'continue' => $input => $content);
+	$kernel->post('test-server' => 'continue');
     }
     elsif ($heap->{'int_cnt'} == 1) {
 
@@ -896,7 +896,6 @@ Content-Length: 0
 
 #
 # notify tests
-# 'received' param in 200 ok via header
 
 my $CRLF = "\015\012";
 
@@ -919,6 +918,7 @@ sub notify_tests {
 	$kernel->delay('continue', 3);
     }
     elsif ($heap->{'int_cnt'} == 3) {
+
 	my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*not available or not online/s,
 	  'NOTIFY: exec-notify worked');
@@ -945,6 +945,9 @@ sub notify_tests {
 		       get_notify('open'));
     }
     elsif ($heap->{'int_cnt'} == 4) {
+
+        my $l = get_header('Via', $input);
+	like($l, qr/received=127.0.0/, 'NOTIFY: received param in 200 reply found');
 
 	my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*available and online/s,
@@ -1107,7 +1110,7 @@ sub udp_send {
       = @_[KERNEL, HEAP, SESSION, ARG0];
 
     my $remote_address = pack_sockaddr_in(5060, 
-					  inet_aton("192.168.123.2") );
+					  inet_aton("127.0.0.1") );
 
     unless (exists $heap->{'udp_socket'}) {
         $heap->{udp_socket} = IO::Socket::INET->new(Proto     => 'udp',

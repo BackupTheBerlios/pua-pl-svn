@@ -294,4 +294,32 @@ sub get_pidf_doc {
     return $pidf;
 }
 
+
+# 
+# called when a SIP message is received. The function checks if it is
+# publish relevant, and if yes, it returns the name of the internal
+# message to be posted, like 'pubfailed', or undef in case of not relevant
+
+sub check_message {
+    my $self = shift;
+    my ($header, $content) = @_;
+    my $ret;
+    my $h0;
+
+    # get the cseq line, for the method name    
+    foreach $h0 (split("\n", $header)) {
+        if ($h0 =~ /^CSeq\s*:\s*\d+\s+PUBLISH/i) {        
+            my $code = $self->get_message_code($header);
+            if ($code >= 200 && $code <= 299) {
+                $ret = 'published';
+            } else {
+                $ret = 'pubfailed';
+            }
+            last;
+        }
+    } 
+    return $ret;
+}
+
+
 1;
