@@ -1,4 +1,3 @@
-#!/usr/bin/perl -wT
 
 # a simple parser for pidf documents, see RFC-3863
 #
@@ -6,7 +5,7 @@
 # a simple presence user agent, 
 # see http://pua-pl.berlios.de for licence
 #
-# $LastChangedDate$, Conny Holzhey
+# $Date$, Conny Holzhey
 
 
 

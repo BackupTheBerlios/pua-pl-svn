@@ -10,7 +10,7 @@ package Transaction;
 # a simple presence user agent, 
 # see http://pua-pl.berlios.de for licence
 #
-# $LastChangedDate$, Conny Holzhey
+# $Date$, Conny Holzhey
 
 
 

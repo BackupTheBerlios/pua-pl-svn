@@ -6,7 +6,7 @@ package Options;
 # a simple presence user agent, 
 # see http://pua-pl.berlios.de for licence
 #
-# $LastChangedDate$, Conny Holzhey
+# $Date$, Conny Holzhey
 
 
 
@@ -39,7 +39,14 @@ our (@ISA, @EXPORT);
 	    );
 
 
-my $VERSION = '1.$Rev$'; # use subversions revision number
+my $VERSION = '1.'; # main version
+
+# append subversions revision number
+my $svn_version = '$LastChangedRevision$'; # will be replaced by svn
+if ($svn_version = ~ /LastChangedRevision: (\d+)/) {
+    $VERSION .= $1;
+}
+
 
 
 
