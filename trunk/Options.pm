@@ -56,7 +56,7 @@ if ($svn_version =~ /LastChangedRevision: (\d+)/) {
 # my sip id, should include the scheme, like 'sip:' or 'pres'
 # sometimes called the presentity id
 
-my $SIP_MY_ID = 'sip:conny@192.168.123.2';
+my $SIP_MY_ID = '';
 
 #
 # the display name which should be associated with the id $SIP_MY_ID
@@ -84,7 +84,7 @@ my $SIP_DOMAIN = '';
 # in case you want to watch somebody else presence, the sip or pres id of that
 # person must be specified here
 
-my $SIP_WATCH_ID = 'sip:user@192.168.123.2'; #garbo.local'; 
+my $SIP_WATCH_ID = ''; #garbo.local'; 
 
 
 
@@ -285,6 +285,12 @@ sub new {
         $self->usage_short("Values for debug option expected in 0..5");
     }
 
+    # sip-id
+    if ($self->{my_id} eq '') {
+	$self->usage_short("Please specify your sip-id with -i, e.g. ".
+			  '-i=sip:roman@iptel.org');
+    }
+
     # check if the uri is complete
     my $uri = new URI($self->{my_id});
     unless ($uri->scheme) {
@@ -320,6 +326,21 @@ sub new {
 
     if ($self->{login} eq '') {
 	$self->{login} = getlogin || getpwuid($<);
+    }
+
+    # watched sip-id
+    if ($self->{subscribe}) {
+	if ($self->{watch_id} eq '') {
+	    $self->usage_short("Please specify sip-id of the person to watch, ".
+			       'e.g. -w=sip:jo@iptel.org');
+	}
+
+	# check if the uri is complete
+	my $wuri = new URI($self->{watch_id});
+	unless ($wuri->scheme) {
+	    $self->usage_short("Expecting scheme for uri specified with switch ".
+			       "--watch-id (-w), like 'sip:'");
+	}
     }
 
     return $self;

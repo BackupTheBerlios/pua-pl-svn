@@ -219,7 +219,7 @@ sub general_tests {
     elsif ($heap->{'int_cnt'} == 1) {
 	is($input, undef, $heap->{'method'}.' sips: scheme is not supported in my-id');
         # prepare the next test
-        system ('testpua.sh -rp 5059 '.$heap->{'switch'}.' -my-id=sip:py@nowhere.com');
+        system ('testpua.sh -rp 5059 '.$heap->{'switch'}.' -w=sip:a@b.c --my-id=sip:py@nowhere.com');
     }
     elsif ($heap->{'int_cnt'} == 2) {
 	my @lines = split ("\n", $input);
@@ -261,7 +261,7 @@ sub general_tests {
 	$heap->{'branch'} = $1;
 
         # prepare the next test
-        system ('testpua.sh -rp 5059 '.$heap->{'switch'}.' -my-id=sip:moby@nowhere.com');
+        system ('testpua.sh -rp 5059 '.$heap->{'switch'}.' -my-id=sip:moby@nowhere.com -w sip:x@y.z');
     }
     elsif ($heap->{'int_cnt'} == 7) {
 	my $l = get_header('Via', $input);
@@ -272,7 +272,7 @@ sub general_tests {
 	    is(1, 0, $heap->{'method'}.' no branch param found');
 	}
 	delete $heap->{'branch'};
-        system ('testpua.sh -rp 5059 '.$heap->{'switch'}.' -my-id=sip:moby@thesea.com -my-name=Moby_Dick');
+        system ('testpua.sh -rp 5059 '.$heap->{'switch'}.' -my-id=sip:moby@thesea.com -my-name=Moby_Dick -w sip:p@q.r');
     }
     elsif ($heap->{'int_cnt'} == 8) {
 	my $l = get_header('To', $input);
@@ -310,13 +310,13 @@ sub init_publish_tests {
       = @_[KERNEL, SESSION, HEAP, ARG0, ARG1];
 
     if ($heap->{'int_cnt'} == 0) {
-        system ('testpua.sh -rp 5059 -p');
+        system ('testpua.sh -rp 5059 -p -i sip:conny@192.168.123.2:5059');
     }
     elsif ($heap->{'int_cnt'} == 1) {
         my @lines = split ("\n", $input);
 	like($lines[0], 
 	     qr/^PUBLISH sip:conny${AT}192.168.123.2(:5059)? SIP.2\.0$/, 
-	     'PUBLISH default sip-id');
+	     'PUBLISH -i sip-id');
 
         # prepare the next test
         system ('testpua.sh -rp 5059 -p -my-id=sip:nobody@nowhere.com');
@@ -399,7 +399,7 @@ sub publish_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         $answer = $publ_ok_answer;
-        system ('testpua.sh -rp 5059 -p -pe 10'); 
+        system ('testpua.sh -rp 5059 -p -pe 10 -i sip:10@sec.onds'); 
     }
     elsif ($heap->{'int_cnt'} == 1) {
         is(get_header('Expires', $input), "Expires: 10", 
@@ -432,7 +432,7 @@ sub publish_tests {
     elsif ($heap->{'int_cnt'} == 5) {
         is($input, 'timeout', 'PUBLISH terminated after 412 response');
         $answer = $publ_ok_answer;
-        system ('testpua.sh -rp 5059 -p -pe 10'); 
+        system ('testpua.sh -rp 5059 -p -pe 10 -i sip:wait@pc.de'); 
     } 
     elsif ($heap->{'int_cnt'} == 6) {
         # wait for the refresh
@@ -498,7 +498,7 @@ sub init_subscribe_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         # prepare the next test, get pua.pl to leave
-        system ('testpua.sh -rp 5059 -s');
+        system ('testpua.sh -rp 5059 -s -i sip:a@b.c -w=sip:user@192.168.123.2:5059');
     }
     elsif ($heap->{'int_cnt'} == 1) {
         my @lines = split ("\n", $input);
@@ -506,7 +506,7 @@ sub init_subscribe_tests {
 	     qr/^SUBSCRIBE sip:user${AT}192.168.123.2(:5059)? SIP.2\.0$/, 
 	     'SUBSCRIBE some default sip-id');
 
-        system ('testpua.sh -rp 5059 -s -watch-id=sip:nobody@nowhere.com');
+        system ('testpua.sh -rp 5059 -s -i=sip:i@j.k -watch-id=sip:nobody@nowhere.com');
     }
     elsif ($heap->{'int_cnt'} == 2) {
 	my @lines = split ("\n", $input);
@@ -522,13 +522,13 @@ sub init_subscribe_tests {
 	is(get_header('Expires', $input), "Expires: 3600", 
 	   'SUBSCRIBE default exipires timeout');
 
-        system ('testpua.sh -rp 5059 -s -subscribe-exp=60');
+        system ('testpua.sh -rp 5059 -s -subscribe-exp=60 -i=sip:i@j.k -w=sip:l@m.n');
     }
     elsif ($heap->{'int_cnt'} == 4) {
 	is(get_header('Expires', $input), "Expires: 60", 
 	   'SUBSCRIBE specify exipires timeout');
 
-        system ('testpua.sh -rp 5059 -s -watch-id=sip:nobody@nowhere.com');
+        system ('testpua.sh -rp 5059 -s -watch-id=sip:nobody@nowhere.com -i=sip:i@j.k');
     }
     elsif ($heap->{'int_cnt'} == 5) {
 	my $l = get_header('Event', $input);
@@ -540,7 +540,7 @@ sub init_subscribe_tests {
 	my $l = get_header('To', $input);
 	is($l, 'To: <sip:nobody@nowhere.com>', 'SUBSCRIBE to header is ok');
 
-        system ('testpua.sh -rp 5059 -s -my-id=sip:nosy@somesi.te -my-name=Nosy');
+        system ('testpua.sh -rp 5059 -s -my-id=sip:nosy@somesi.te -my-name=Nosy -w=im:star@home.com');
     }
     elsif ($heap->{'int_cnt'} == 7) {
 	my $l = get_header('From', $input);
@@ -554,7 +554,7 @@ sub init_subscribe_tests {
 	is($l, 'Accept: application/pidf+xml',
 	     'SUBSCRIBE accept header is ok');
 
-        system ('testpua.sh -rp 5059 -s -my-host=cray.crack');
+        system ('testpua.sh -rp 5059 -s -my-host=cray.crack -i=sip:i@j.k -w=sip:a@b.c');
     }
     elsif ($heap->{'int_cnt'} == 9) {
 	my $l = get_header('Call-ID', $input);
@@ -578,7 +578,7 @@ sub subscribe_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         $answer = $subs_ok_answer;
-        system ('testpua.sh -rp 5059 -s -se 10');
+        system ('testpua.sh -rp 5059 -s -se 10 -i=sip:ich@ag.de -w sip:you@job.com');
     }
     elsif ($heap->{'int_cnt'} == 1) {
         # keep values
@@ -633,7 +633,7 @@ sub subscribe_tests {
         is($input, 'timeout', 'Subscribe terminated after 408 response');
 
 	$answer = $subs_ok_answer; 
-        system ('testpua.sh -rp 5059 -s -se 10');
+        system ('testpua.sh -rp 5059 -s -se 10 -i im:a@b.c -w sip:sap@soup.se');
 
     }  elsif ($heap->{'int_cnt'} == 6) {
 	$kernel->delay('continue', 1); 
@@ -661,7 +661,7 @@ CSeq: 1 SUBSCRIBE
 WWW-Authenticate: Digest realm="iptel.org", nonce="41a27b3b6184801b57dba727f73804c29f91f1b3"
 
 ';
-        system('testpua.sh -rp 5059 -s -pe 10 -u=abc -pw=abc --my-id=sip:nobody@nowhere.com:5059'); 
+        system('testpua.sh -rp 5059 -s -pe 10 -u=abc -pw=abc --my-id=sip:nobody@nowhere.com:5059 -w=sip:boss@desk.top'); 
     } 
     elsif ($heap->{'int_cnt'} == 10) {
 	# the challenge
@@ -784,7 +784,7 @@ WWW-Authenticate: Digest algorithm=MD5,
   realm="sipinfo.iprimus.net"
 
 ';
-        system ('testpua.sh -rp 5059 -r -u user54 -pw password --registrar sip:iprimus.net');
+        system ('testpua.sh -rp 5059 -r -u user54 -pw password --registrar sip:iprimus.net -i=sip:don@yum.my');
     } 
     elsif ($heap->{'int_cnt'} == 3) {
         # do nothing - for the reply 401
@@ -807,7 +807,7 @@ CSeq: 1 REGISTER
 WWW-Authenticate: Digest realm="SFTF", nonce="5369704365727431353232", qop="auth"
 
 ';
-        system ('testpua.sh -rp 5059 -r -u abc -pw abc --registrar sip:sip.test.local');
+        system ('testpua.sh -rp 5059 -r -u abc -pw abc --registrar sip:sip.test.local -i=sip:user@garbo.local');
     } 
     elsif ($heap->{'int_cnt'} == 5) {
         # do nothing - for the reply 401
@@ -835,7 +835,7 @@ Contact: <sip:sc@192.168.123.2:5062;transport=UDP>
 CSeq: 1 REGISTER
 
 ';
-        system ('testpua.sh -rp 5059 -r -u admin -pw heslo --registrar sip:10.0.0.113:6060');
+        system ('testpua.sh -rp 5059 -r -u admin -pw heslo --registrar sip:10.0.0.113:6060 -i sip:me@at.home');
 	$kernel->delay('continue', 3, 'timeout'); 
     }
     elsif ($heap->{'int_cnt'} == 8) {
@@ -856,7 +856,7 @@ sub register_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         $answer = $reg_ok_answer;
-        system ('testpua.sh -rp 5059 -r -re 10 --registrar sip:garbo.local');
+        system ('testpua.sh -rp 5059 -r -re 10 --registrar sip:garbo.local -i sip:quick@ten.sec');
     }
     elsif ($heap->{'int_cnt'} == 1) {
 	is(get_header('Expires', $input), "Expires: 10", 
@@ -885,7 +885,7 @@ Expires: 5
 Content-Length: 0
 
 ';
-        system ('testpua.sh -rp 5059 -r --registrar sip:garbo.local');
+        system ('testpua.sh -rp 5059 --my-sip-id sip:long@switch.org -r --registrar sip:garbo.local');
     }
     elsif ($heap->{'int_cnt'} == 3) {
 	# wait for register refresh
@@ -910,7 +910,7 @@ sub notify_tests {
 	`rm /tmp/t4`;
 	`rm /tmp/t2`;
 	`rm /tmp/t1`;
-        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -se 30 -en \'cat>/tmp/t2\' -ec t/testexec3.sh -eo t/testexec4.sh --exec t/testexec1.sh');
+        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -se 30 -en \'cat>/tmp/t2\' -ec t/testexec3.sh -eo t/testexec4.sh --exec t/testexec1.sh -i=sip:me@exec.test');
 
     }
     elsif ($heap->{'int_cnt'} == 1) {
