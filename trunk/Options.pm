@@ -1,6 +1,6 @@
 package Options;
 
-# this module contains standard settings, and the command line processing
+# This module contains standard settings, and the command line processing
 #
 # part of pua.pl
 # a simple presence user agent, 
