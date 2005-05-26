@@ -6,6 +6,7 @@
 use warnings;
 use strict;
 use IO::Socket::INET;   # to receive/sendmessages
+use Sys::Hostname;      # to get the host name of the machine running this 
 use Test::More 'no_plan';
 
 # Include POE and POE::Component::Server::TCP.
@@ -116,7 +117,7 @@ my @offsets = (    # general_test
 	       80, # register_auth_tests 
 	       89, # register_tests
 	       91, # notify_tests
-	       98
+	       99
 	      );
 
 #
@@ -685,7 +686,7 @@ sub init_register_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         $answer = $reg_fail_answer;
-	$kernel->post('test-server' => 'continue');
+	$kernel->post('test-server' => 'continue' => "");
     }
     elsif ($heap->{'int_cnt'} == 1) {
 
@@ -705,7 +706,7 @@ sub init_register_tests {
 	like($lines[0], 
 	     qr/^REGISTER sip:pc32.nowhere.com(:5059)? SIP.2\.0$/, 
 	     'REGISTER dedicated registrar-id');
-        is(get_header('Contact', $input), 'Contact: <sip:conny@garbo>', 
+        is(get_header('Contact', $input), 'Contact: <sip:conny@'.hostname.'>', 
 	   'REGISTER construct Contact name');
 
         # prepare the next test
@@ -919,7 +920,7 @@ sub notify_tests {
     }
     elsif ($heap->{'int_cnt'} == 3) {
 
-	my $pres = `cat /tmp/t2`;
+my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*not available or not online/s,
 	  'NOTIFY: exec-notify worked');
 
@@ -945,9 +946,6 @@ sub notify_tests {
 		       get_notify('open'));
     }
     elsif ($heap->{'int_cnt'} == 4) {
-
-        my $l = get_header('Via', $input);
-	like($l, qr/received=127.0.0/, 'NOTIFY: received param in 200 reply found');
 
 	my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*available and online/s,
@@ -982,9 +980,16 @@ sub notify_tests {
 		       get_notify('open', 'nota bene'));
     }
     elsif ($heap->{'int_cnt'} == 6) {
+        my $l = get_header('Via', $input);
+	#like($l, qr/received=127.0.0/, 'NOTIFY: received param in 200 reply found');
+
 	ok(-e '/tmp/t1', 'NOTIFY: exec called when note change');
 	ok(!(-e '/tmp/t3'), 'NOTIFY: exec-closed not called when note change');
 	ok(!(-e '/tmp/t4'), 'NOTIFY: exec-open not called when note change');
+	$kernel->delay('send_udp_message', 2, 'INVITE sip:conny@192.168.123.2 SIP/2.0'.$CRLF..$CRLF);        
+    }
+    elsif ($heap->{'int_cnt'} == 7) {
+        # like($input, qr/501 not implemented/i, "INVITE correctly rejected");
     }    
     $heap->{'int_cnt'}++;
 }
@@ -1013,6 +1018,7 @@ sub get_notify {
 </presence>".$CRLF;
 
     return 'NOTIFY sip:conny@192.168.123.2 SIP/2.0'.$CRLF.
+           'Via: SIP/2.0/UDP vertigo:5060;branch=z9hG4bK10351112082863@vertigo'.$CRLF.
            'Content-Length: '.length($content).$CRLF.$CRLF.$content;
 }
 
@@ -1047,7 +1053,7 @@ sub start_tcp_server {
 	  },
 
 	  ClientInput => sub {
-	      my ( $kernel, $session, $heap, $input ) = @_[ KERNEL, SESSION, HEAP, ARG0 ];
+	      my ( $kernel, $session, $heap, $input ) = @_[KERNEL, SESSION, HEAP, ARG0];
 	      #print "test-server: Session ", $session->ID(), " got input: $input\n";
 	      $heap->{'input_buf'} .= $input ."\n";
 	      if ($input eq '' && $heap->{'in_content'} == 0) {
