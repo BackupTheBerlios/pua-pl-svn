@@ -60,7 +60,8 @@ sub new {
     foreach (keys %params) {
         $self->{$_} = $params{$_};
     }
-
+    
+    $self->{log}->write(DEBUG, "transaction: new for " . $self->get_call_id());
     return $self;
 }
 
@@ -308,10 +309,9 @@ sub get_call_id {
     my $self = shift;
     my $options = $self->{options};
     unless (exists $self->{call_id}) {
-	return rand() . '@' . $options->{my_host};
-    } else {
-	return $self->{call_id};
+        $self->{call_id} = rand() . '@' . $options->{my_host};
     }
+    return $self->{call_id};
 }
 
 #

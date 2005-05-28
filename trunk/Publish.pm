@@ -281,7 +281,11 @@ sub get_pidf_doc {
   <status>
     <basic>'.$options->{basic_status}.'</basic>';
     if ($options->{'contact'} ne '') {
-	$pidf .= "\n".'    <contact>'.$options->{'contact'}.'</contact>';
+	$pidf .= "\n".'    <contact';
+        if ($options->{priority} ne '') {
+            $pidf .= ' priority="'.$options->{priority}.'"';
+        }
+        $pidf .= '>'.$options->{'contact'}.'</contact>';
     }
     if ($options->{'note'} ne '') {
 	$pidf .= "\n".'    <note>'.$options->{'note'}.'</note>';

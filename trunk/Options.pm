@@ -178,15 +178,18 @@ sub new {
     $self->{basic_status} = 'open'; # which own status is to be published
     $self->{note}         = '';     # sent with PUBLISH
     $self->{contact}      = '';     # as sent with PUBLISH
+    $self->{priority}     = '';     # prio for this contact, no prio on default
 
     $self->{exec_notify}  = ''; # what program to run when a notify is received
     $self->{exec_open}    = ''; # what program to run when a status open is received
     $self->{exec_closed}  = ''; # what program to run when status closed
     $self->{exec_changed} = ''; # what program to run when status changed
 
-    $self->{register}  = 0;  # set by the comand line options in case we should register
-    $self->{publish}   = 0;  # set in case we should publish our presence
-    $self->{subscribe} = 0;  # set when subscription should be made
+    $self->{register}  = 0;        # set by the comand line options in case we 
+                                   # have to register
+    $self->{publish}   = 0;        # set in case we should publish our presence
+    $self->{subscribe} = 0;        # set when subscription should be made
+    $self->{event_package} = 'presence';  # for subscription to watcher info
 
     $self->{register_once}  = 0; # terminate after first REGISTER
     $self->{publish_once}   = 0; # terminate after first PUBLISH
@@ -207,6 +210,7 @@ sub new {
 
     my $result = GetOptions('register|r'         => \$self->{register},
 			    'subscribe|s'        => \$self->{subscribe},
+			    'event-package|ep=s' => \$self->{event_package},
 			    'publish|p'          => \$self->{publish},
 			    'my-sip-id|my-id|i=s'=> \$self->{my_id},
 			    'my-name=s'          => \$self->{my_name},
@@ -219,6 +223,7 @@ sub new {
 			    'options'            => \$self->{options},
 			    'status=s'           => \$self->{basic_status},
 			    'contact|c=s'        => \$self->{contact},
+                            'priority=s'         => \$self->{priority},
 			    'note=s'             => \$self->{note},
 			    'watch-id|w=s'       => \$self->{watch_id},
 			    'subscribe-exp|se=i' => \$self->{subscribe_exp},
@@ -247,7 +252,8 @@ sub new {
     if ($self->{help})    { $self->usage_long(); }
     if ($self->{options}) { $self->usage_options(); }
 
-    unless ($self->{subscribe} || $self->{publish} || $self->{register}) {
+    unless ($self->{subscribe} || $self->{publish} 
+            || $self->{register}) {
         $self->usage_short('At least one of the options register, subscribe, '.
 		     'publish is required.');
     }
@@ -404,7 +410,7 @@ Common options:
   -u, --username=name: Username for authentification at the remote
     server
 
-  -pw, --password=name: Password for authentification at the remote
+  -pw, --password=xxxx: Password for authentification at the remote
     server, in combination with -u
 
   -x, --proxy=server: for the server name of the SIP proxy server,
@@ -487,6 +493,11 @@ Continuation of options for pua.pl
 
   --my-host=name: Hostname of this machine, as used in e.g. Via: 
     headers, usually this is automatically detected. 
+
+  --priority=nnn. Can be used in combination with -p and -c. It
+    sets the priority of the contact possibilty as it is published
+    with -c. A value of nnn of 1.0 means, this is your most prefered 
+    way to contact you.
 
   -lp, --local-port=number: Port number where to wait for SIP 
     messages on this local machine, default is 5060

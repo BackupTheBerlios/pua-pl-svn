@@ -31,6 +31,8 @@ require pidf;           # my own submodule, for parsing pidf documents
 
 #
 # Constructor, expects reference to the log object, and to the options
+# additionally expects name of the package, either 'presence' or
+# 'presence.winfo'
 
 sub new {
     my $class        = shift;
@@ -39,6 +41,7 @@ sub new {
 
     $self->{log}     = shift;               # reference to the log object
     $self->{options} = shift;               # reference to the options object
+    $self->{package} = shift;               # reference to the package name
     $self->{state}   = 'subs_initializing'; # sub state for subscribe
     $self->{tuples}  = ();                  # empty hash
 
@@ -74,11 +77,16 @@ sub get_msg {
 
     # set some extra header lines, subscribe specific
 
-    $headers = 'Event: presence'.$CRLF.
-               'Accept: application/pidf+xml'.$CRLF.
-	       'Expires: '.$expires.$CRLF.
-	       'Contact: <sip:'.$options->{login} . 
-		  '@'.$options->{my_host};
+    $headers = 'Event: '.$self->{package}.$CRLF;
+
+    if ($self->{package} =~ /\.winfo$/i) {
+        $headers .= 'Accept: application/watcherinfo+xml'.$CRLF;
+    } else {
+        $headers .= 'Accept: application/pidf+xml'.$CRLF;
+    }
+    $headers .= 'Expires: '.$expires.$CRLF.
+	        'Contact: <sip:'.$options->{login} . 
+		   '@'.$options->{my_host};
 		    
     # check if port number included
     unless ($options->{my_host} =~ /:\d+$/) {
@@ -118,8 +126,9 @@ sub control {
     my $options = $self->{options};
     my $state = $self->{state};
     my $transaction;
+    my $ok = 0;
 
-    unless ($options->{subscribe}) { return 'x'; } # exit from me out
+    unless ($options->{subscribe}) { return 'x'; } 
 
     $log->write(DEBUG, "subscribe: in state $state got event $event");
 
@@ -188,25 +197,30 @@ sub control {
             if ($status eq 'ok') {
 
 	        # all headers are ok, parse the body, the message content
-	        pidf_parse($content, 
-			   $log, 
-			   sub {           # callback #1
-			       my $self = $_[1];
-			       my $options = $self->{options};
-			       if ($options->{exec_notify} ne '') {
-				   open(EXEC, '| '.$options->{exec_notify}) or
-				     die("$SIP_USER_AGENT: Can't run ".
-					$options->{exec_notify}. ", $!");
-				   print EXEC $_[0];
-				   close EXEC;
-			       };
-			       $self->{log}->write(WARN, $SIP_USER_AGENT.': '.$_[0]);
-			   },
-			   $self,          # arg 1
-			   \&handle_tuple, # callback #2
-			   $self);         # arg 2
+                if ($self->{package} eq 'presence') {
+                    # body should be pidf document
+                    pidf_parse($content, 
+                               $log, 
+                               sub {           # callback #1
+                                   my $self = $_[1];
+                                   my $options = $self->{options};
+                                   if ($options->{exec_notify} ne '') {
+                                       open(EXEC, '| '.$options->{exec_notify}) or
+                                           die("$SIP_USER_AGENT: Can't run ".
+                                               $options->{exec_notify}. ", $!");
+                                       print EXEC $_[0];
+                                       close EXEC;
+                                   };
+                                   $self->{log}->write(WARN, $SIP_USER_AGENT.': '.$_[0]);
+                               },
+                               $self,          # arg 1
+                               \&handle_tuple, # callback #2
+                               $self);         # arg 2
 
-		$self->clean_tuples(); # remove the remaining old ones
+                    $self->clean_tuples(); # remove the remaining old ones
+                } elsif ($self->{package} eq 'presence.winfo') {
+                    $self->{log}->write(WARN, "watcherinfo: $content");
+                }
 
 		if ($options->{notify_once}) {
 		    # ready
@@ -214,7 +228,7 @@ sub control {
 		    $self->change_state('subs_ignoring');
 		} else {
 		    $ret = 'running';
-		    # stay in this state
+		    # stay in this state, wait for next
 		}	
 
 	    } elsif ($status =~ /^\d+$/) {
@@ -464,7 +478,7 @@ sub handle_tuple {
 
 
 # 
-# all tuples found in $self~>tuples but not in passed list are
+# all tuples found in $self->tuples but not in passed list are
 # obsolete and to be removed
 
 sub clean_tuples {
@@ -632,10 +646,34 @@ sub check_message {
     my ($l0, $l, $ok, $ret);
     my $return_headers = '';
 
+    my $subscribeline = '';
+    my $callid = '';
+    my $transaction;
+
+    # the message cannot be for subscribe if there is no previously
+    # created transaction object
+    unless (exists $self->{transaction}) {
+        return undef; # not for me
+    }  else {
+        $transaction = $self->{transaction};
+    }
+    
     # get the cseq line, for the method name    
     foreach $l (split("\n", $header)) {
         unless (defined $l0) { $l0 = $l; } # keep the first one
         if ($l =~ /^CSeq\s*:\s*\d+\s+SUBSCRIBE/i) {        
+            $subscribeline = $l;
+        }
+        if ($l =~ /^Call-ID\s*:\s*(.*?)\s*$/i) {        
+            if ($1 eq $transaction->get_call_id()) {
+                $callid = $1;
+            }
+        }
+
+        # if the message is a response to SUBSCRIBE and the call-id
+        # matches the one of the transaction, we have to handle it
+
+        if ($callid ne '' && $subscribeline ne '') {
             my $code = $self->get_message_code($header);
             if ($code >= 200 && $code <= 299) {
                 $ret = 'subscribed';
@@ -647,6 +685,7 @@ sub check_message {
 
         # for notify, get the header lines that will be required for the
         # sip 200 OK message responds
+
 	if ($l =~ /^Via:\s*SIP\/2\.0/i) {
             if (defined $human_addr) {
                 $return_headers .= $l.';received='.$human_addr . $CRLF;

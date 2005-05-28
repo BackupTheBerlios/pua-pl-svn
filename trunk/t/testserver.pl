@@ -110,14 +110,14 @@ my $answer = $subs_fail_answer;
 # not quite sophisticated method ... the test beats for the individual methods
 my @offsets = (    # general_test
 	       33, # init_publish_tests
-	       44, # init_subscribe_tests
-	       54, # subscribe_tests 
-	       65, # publish_tests
-	       76, # init_register_tests
-	       80, # register_auth_tests 
-	       89, # register_tests
-	       91, # notify_tests
-	       99
+	       45, # init_subscribe_tests
+	       55, # subscribe_tests 
+	       66, # publish_tests
+	       77, # init_register_tests
+	       81, # register_auth_tests 
+	       90, # register_tests
+	       92, # notify_tests
+	       100
 	      );
 
 #
@@ -209,6 +209,7 @@ sub general_tests {
     } elsif ($heap->{'beat_cnt'} <= 32) { 
         $heap->{'method'} = 'SUBSCRIBE';
 	$heap->{'switch'} = '-s';
+        $answer = $subs_fail_answer;
     } else { die; }
 
     $heap->{'int_cnt'} = $heap->{'beat_cnt'}%11;
@@ -380,6 +381,14 @@ sub init_publish_tests {
         like($content,qr/<contact>tel:\+1234567890<\/contact>/sx,
 	    'PUBLISH can set a contact');
 
+	# set a priority
+        system('testpua.sh -rp 5059 -p -my-id=sip:charly${AT}brown.net --priority="O.9999" -c tel:+1234567890');
+    }
+    elsif ($heap->{'int_cnt'} == 10) {
+        # like($content,qr/<contact priority="0.9999">tel:\+1234567890<\/contact>/sx,
+        like($content,qr/priority=\"/sx,
+	    'PUBLISH can set a contact priority');
+
 	$kernel->post('test-server' => 'continue' => $input => $content);
     }    
 
@@ -459,7 +468,7 @@ sub publish_tests {
         $answer = 'SIP/2.0 407 Unauthorized
 Via: SIP/2.0/UDP garbo;branch=z9hG4bK199331109232002@garbo;received=192.168.123.2
 From: <sip:conny@192.168.123.2>;tag=1109232002
-Call-ID: 0.989628284328745@garbo
+'.get_header('Call-ID', $input).'
 Content-Length: 0
 To: <sip:conny@192.168.123.2>;tag=SCt-0-1109232002.13-192.168.123.2~case303reg
 Contact: <sip:sc@192.168.123.2:5062;transport=UDP>
@@ -577,11 +586,23 @@ sub subscribe_tests {
     my ( $kernel, $session, $heap, $input, $content) 
       = @_[KERNEL, SESSION, HEAP, ARG0, ARG1];
 
+
     if ($heap->{'int_cnt'} == 0) {
         $answer = $subs_ok_answer;
         system ('testpua.sh -rp 5059 -s -se 10 -i=sip:ich@ag.de -w sip:you@job.com');
     }
     elsif ($heap->{'int_cnt'} == 1) {
+
+        $answer = 'SIP/2.0 200 OK
+Via: SIP/2.0/TCP garbo;branch=z9hG4bK32781107964501@garbo;received=127.0.0.1
+To: Conny <sip:conny@192.168.123.2>;tag=a6f1fa7237095ed
+From: Conny <sip:conny@192.168.123.2>;tag=1107964501
+'.get_header('Call-ID', $input).'
+CSeq: 2 SUBSCRIBE
+Server: crude test server
+Content-Length: 0
+
+';
         # keep values
         my $l = get_header('CSeq', $input);
 	$l =~ /CSeq: (\d+)/;
@@ -654,7 +675,7 @@ sub subscribe_tests {
         $answer = 'SIP/2.0 401 Unauthorized
 Via: SIP/2.0/UDP garbo;branch=z9hG4bK199331109232002@garbo;received=192.168.123.2
 From: <sip:conny@192.168.123.2>;tag=1109232002
-Call-ID: 0.989628284328745@garbo
+Call-ID: 123123123123
 Content-Length: 0
 To: <sip:conny@192.168.123.2>;tag=SCt-0-1109232002.13-192.168.123.2~case303reg
 Contact: <sip:sc@192.168.123.2:5062;transport=UDP>
@@ -1028,12 +1049,16 @@ sub get_header {
     my $name = shift;
     my $in = shift;
 
-    my @lines = split ("\n", $in);
-    my $l;
-    foreach (@lines) {
-        if (/^$name: /) { $l = $_; last; }
+    if (defined $in) {
+        my @lines = split ("\n", $in);
+        my $l;
+        foreach (@lines) {
+            if (/^$name: /) { $l = $_; last; }
+        }
+        return $l;
+    } else {
+        return 0;
     }
-    return $l;
 }
 
 
@@ -1077,6 +1102,10 @@ sub start_tcp_server {
 
 		      my $an= $answer;# subs_fail_answer;
 		      if (defined $an) {
+                          # subscribe is sensitive to call-id
+                          $an = replace_callid($an, get_header('Call-ID', 
+                                                               $heap->{'input_buf'}));
+                          # print "Answer: $an";
 			  $heap->{'client'}->put($an);
 		      }
 
@@ -1108,6 +1137,29 @@ sub start_tcp_server {
     );
 
 } # end start_tcp_server
+
+
+# replace the header line with the call-id with the given one, return 
+# the complete header with correct call-id line
+sub replace_callid {
+    my ($ans, $cid) = @_;
+
+    my $newan = '';
+
+    if ($cid) {
+        my @lines = split ("\n", $ans);
+        my $l;
+        foreach (@lines) {            
+            if (/^Call.ID/i) { 
+                $newan .= $cid."\n";
+            } else {
+                $newan .= $_."\n";
+            }
+        }
+        return $newan; 
+    }
+    return $ans; 
+}
 
 
 sub udp_send {

@@ -131,11 +131,12 @@ sub control {
 
 	    # create a object each for message specific handling
 	    my $publ = new Publish($log, $options);
-	    my $subs = new Subscribe($log, $options);
+	    my $subs = new Subscribe($log, $options, $options->{event_package});
 	    my $reg  = new Register($log, $options);
+
+	    push @handlers, $reg;
 	    push @handlers, $publ;
 	    push @handlers, $subs;
-	    push @handlers, $reg;
 
 	    sip_wait_message($kernel, $heap); # start listening
 
