@@ -234,3 +234,28 @@ sub callback {
 }
 
 pidf_parse($doc, $log, undef, undef, \&callback, 'Hammelswade');
+
+#############################################################################
+
+# as sent by pals.internet2.edu
+$doc = '<?xml version="1.0"?>
+<!DOCTYPE presence PUBLIC "//IETF//DTD RFCxxxx PIDF 1.0//EN" "pidf.dtd">
+<presence entity="sip:yivi@pals.internet2.edu">
+<tuple id="tid25847dd8">
+  <contact  priority="0.500000">sip:conny@garbo</contact>
+  <status>
+    <basic>open</basic>
+    <geopriv><location-info><civilAddress>    </civilAddress></location-info></geopriv>
+  </status>
+</tuple>
+</presence>';
+
+$expected = 'Presence information for sip:yivi@pals.internet2.edu:
+  available and online
+    prioity of this way of communication: 0.500000
+    using address: sip:conny@garbo
+';
+
+pidf_parse($doc, $log, sub{ $res = $_[0]; });
+is($res, $expected, 'including geopriv');
+
