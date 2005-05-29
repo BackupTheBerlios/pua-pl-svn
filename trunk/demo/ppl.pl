@@ -1,38 +1,90 @@
-#!/usr/bin/perl -wT
+#!/usr/bin/perl -w
 
 #
-# ppl.pl - pua.pl for the people, a online presence user agent.
-# this provides a user interface of pua.pl, with the special
-# crux that it is web based
+# ppl.pl - Demonstrator and WEB UI for pua.pl a online presence 
+# user agent. This provides a simple user interface of pua.pl, with
+# the special crux that it is web based
 
 use CGI qw/:standard/;
 use strict;
 
 my $query = new CGI;
+my $PATH_TO_PROG ='/home/conny/projects/sippoc/trunk/';
+
 
 print header;
-print $query->start_html(-title => 'ppl.pl, pua.pl for the people',
-                         -style=>{'src'=>'/pua-pl/wp.css'});
+print $query->start_html(-title => 'pua.pl Web UI',
+                         -style=>{'src'=>'/pua-pl/doc/wp.css'});
 
-print '<div id="center"><h2>ppl.pl - pua.pl for the people</h2>';
+print '<div id="center"><h2>pua.pl Web UI</h2>';
 
 my $proxy = $query->param('proxy');
 unless ($proxy) {
     print_form($query);
 } else {
-    my ($ok, $err) = check_param();
-    unless ($ok) {
-        print "<bold>Error: $err</bold>\n";
+    my $err = check_param();
+    if ($err ne '') {
+        print "<blink><b>Error: $err</b></blink><p>\n";
+	print_form($query);
     } else {
-        # ...
+	# FIXME fixme! all is tainted
+        my $cmd = $PATH_TO_PROG.'pua.pl -r -ro -re 60 -d 5'.
+          ' --proxy='    .$query->param('proxy').
+	  ' --my-sip-id='.$query->param('sip_id'). 
+	    ($query->param('username') ? ' --username=' .$query->param('username') : '').
+	    ($query->param('password') ? ' --password=' .$query->param('password') : '');
+
+	print $cmd, "<p>\n";
+
+	my $out = `perl -I ${PATH_TO_PROG}lib -I${PATH_TO_PROG}. -- $cmd`;
+	print "<pre>$out</pre>\n";
     }
 }
 print $query->end_html();
 
-     
+
+# 
+# check if all neccessary fields are filled in, and there must not be 
+# any characters that would be allowed to misuse perl
+ 
 sub check_param {
-    return "SIP Proxy server not defined.";
+
+    my $p = $query->param('proxy');
+    if ($p eq '') { 
+	return "SIP Proxy server name not defined.";
+    }
+    unless ($p =~ /^([a-z.0-9])+$/i) {
+	return 'Invalid character in proxy server name.';
+    }
+
+    my $s = $query->param('sip_id');
+    if (!defined $s || $s eq '') { 
+	return "SIP id not specified.";
+    }
+    unless ($s =~ /^([a-z.0-9:@])+$/i) {
+	return 'Invalid character in sip-id.';
+    }
+
+    my $u = $query->param('username');
+    if (defined $u and $u ne '') {
+	unless ($u =~ /^([a-z.0-9:@])+$/i) {
+	    return 'Invalid character in user name.';
+	}
+    }
+
+    my $w = $query->param('password');
+    if (defined $w and $w ne '') {
+        unless ($w =~ /^([a-z.0-9:])+$/i) {
+	    return 'Invalid character in password. Due to security of the web server the '.
+	      'character set is limited to [a-z.0-9:], even when other chars would be possible.';
+	}
+    }
+    return '';
 } 
+
+
+#
+# the main input form 
 
 sub print_form {
     my $query = shift;
@@ -93,5 +145,8 @@ sub print_form {
     print '"sip:username@domain.org".';
 
     print "\n</td></tr></table>";
+    print "<p><center>\n";
+    print $query->submit();
+    print "<p></center>\n";
     print $query->end_form();
 }
