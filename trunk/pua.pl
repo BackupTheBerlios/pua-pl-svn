@@ -490,7 +490,7 @@ sub udp_read {
     $heap->{'udp'} = 1; # been here
     $heap->{'udp_received'} = 1; 
 
-    $remote_address = recv( $socket, $message = '', 1024, 0);
+    $remote_address = recv( $socket, $message = '', (64*1024) - 1 , 0);
     return unless defined $remote_address;
 
     my ( $peer_port, $peer_addr ) = unpack_sockaddr_in($remote_address);
