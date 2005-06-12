@@ -21,12 +21,22 @@ h3 {
 }
 
 td.tabs {
-	border-top: medium outset green;
-	border-left: medium outset green;
+	border-top: medium solid #cccccc;
+	border-left: medium solid #cccccc;
+	border-right: medium solid #cccccc;
 }
+
+.pane_tbl {
+	border-top: medium solid #cccccc;
+	border-left: medium solid #cccccc;
+	border-bottom: medium solid #cccccc;
+	border-right: medium solid #cccccc;
+}
+
 div.tabs {
-	background-color: #00ffff;
+	background-color: #e0e0e0;
 	cursor: hand;
+
 }	
 
 *#center    {
