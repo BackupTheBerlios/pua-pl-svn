@@ -59,6 +59,8 @@ sub get_msg {
     my $options = $self->{options};
     my $headers = '';
 
+    if ($expires == 0) { $expires = 1; } # FIXME
+
     unless (exists $self->{transaction}) {
 	$self->{transaction} 
 	  = new Transaction('log'      => $self->{log},
@@ -175,10 +177,20 @@ sub control {
 
 	if ($event eq 'subexpired') {
 
-	    # it's time to refresh subscription
- 	    $self->create_subscribe($kernel);
-	    $transaction = $self->{transaction};
-	    $ret = 'running';
+	    if ($options->{notify_once}) {
+		# give up, don't expect any more notifies
+                $log->write(WARN, "$SIP_USER_AGENT: no notification received".
+			    ", giving up.");
+		$self->change_state('subs_ignoring');
+		$ret = 'x';
+
+	    } else {
+
+		# it's time to refresh subscription
+		$self->create_subscribe($kernel);
+		$transaction = $self->{transaction};
+		$ret = 'running';
+	    }
 
 	} elsif ($event eq 'subscribed') {
 
@@ -236,22 +248,33 @@ sub control {
   	        # it was a notification that the subscription temporary failed
                 # including a "retry-after" hint, so start a timer, then retry
 
- 	        $self->change_state('subs_waiting');
- 	        $log->write(DEBUG, "subscribe: delay subscribe for $status sec");
-	        $kernel->delay('subdelayed', $status);
-		$ret = 'running';
+		if ($options->{notify_once}) {
+		    # ready
+		    $ret = 'x';
+		    $self->change_state('subs_ignoring');
+		} else {
+		    $self->change_state('subs_waiting');
+		    $log->write(DEBUG, "subscribe: delay subscribe for $status sec");
+		    $kernel->delay('subdelayed', $status);
+		    $ret = 'running';
+		}
 
 	    } elsif ($status eq 're-subscribe') {
 
-	        # immediately try again to subscribe
-    	        $self->create_subscribe($kernel);
-		$transaction = $self->{transaction};
-		$ret = 'running';
-
+		if ($options->{notify_once}) {
+		    # ready
+		    $ret = 'x';
+		    $self->change_state('subs_ignoring');
+		} else {
+		    # immediately try again to subscribe
+		    $self->create_subscribe($kernel);
+		    $transaction = $self->{transaction};
+		    $ret = 'running';
+		}
 	    } else {
 
 	        # subscription failed, leave state 
-                $log->write(WARN, "pa terminated subscription with reason ".
+                $log->write(WARN, "$SIP_USER_AGENT: pa terminated subscription with reason ".
 			    $status. ", leaving...");
 		$self->change_state('subs_ignoring');
 		$ret = 'x';
