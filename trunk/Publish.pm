@@ -275,26 +275,23 @@ sub get_pidf_doc {
     my $self = shift;
     my $options = $self->{options};
 
-    my $pidf = '<?xml version="1.0"?>
-<presence entity="'.$options->{my_id}.'">
-<tuple id="12345">
-  <status>
-    <basic>'.$options->{basic_status}.'</basic>';
+    my $pidf = '<?xml version="1.0"?>'.$CRLF.
+      '<presence entity="'.$options->{my_id}.'">'.$CRLF.
+      '<tuple id="12345">'.$CRLF.
+      '  <status>'.$CRLF.
+      '    <basic>'.$options->{basic_status}.'</basic>';
     if ($options->{'contact'} ne '') {
-	$pidf .= "\n".'    <contact';
+	$pidf .= $CRLF.'    <contact';
         if ($options->{priority} ne '') {
             $pidf .= ' priority="'.$options->{priority}.'"';
         }
         $pidf .= '>'.$options->{'contact'}.'</contact>';
     }
     if ($options->{'note'} ne '') {
-	$pidf .= "\n".'    <note>'.$options->{'note'}.'</note>';
+	$pidf .= $CRLF.'    <note>'.$options->{'note'}.'</note>';
     }
-    $pidf .= '
-  </status>
-</tuple>
-</presence>
-';
+    $pidf .= $CRLF.'  </status>'.$CRLF.'</tuple>'.$CRLF.'</presence>'.$CRLF;
+
     return $pidf;
 }
 
