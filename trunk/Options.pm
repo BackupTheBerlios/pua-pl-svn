@@ -196,12 +196,13 @@ sub new {
     $self->{subscribe_once} = 0; # terminate after first SUBSCRIBE (?)
     $self->{notify_once}    = 0; # terminate after first NOTIFY
 
-    $self->{username}  = ''; # for digest authentification 
-    $self->{password}  = ''; # for digest authentification 
+    $self->{username}  = ''; # for digest authentification
+    $self->{password}  = ''; # for digest authentification
 
     $self->{login}     = ''; # local login name
 
     $self->{testing}   = 0;  # test mode
+    $self->{trace}     = 0;  # trace SIP message
 
     $self->{version}   = 0;  # to get the option -v
     $self->{options}   = 0;  # to get the option --options
@@ -242,6 +243,7 @@ sub new {
 			    'username|u=s'       => \$self->{username},
 			    'password|pw=s'      => \$self->{password},
 			    'login=s'            => \$self->{login},
+			    'trace'              => \$self->{trace},
 			    'testing'            => \$self->{testing}
 			   );
 
@@ -281,8 +283,8 @@ sub new {
 		    "is not covered by RFC 3863, 'open' or 'closed' is expected.");
     }
 
-    if ($self->{debug} == 0) {      $log->log_level(EMERG); # not used, so it is quiet
-    } elsif ($self->{debug} == 1) { $log->log_level(WARN);
+    if ($self->{debug} == 0) {      $log->log_level(EMERG);  # not used, all is quiet
+    } elsif ($self->{debug} == 1) { $log->log_level(NOTICE); # includes WARN
     } elsif ($self->{debug} == 2) { $log->log_level(INFO);
     } elsif ($self->{debug} == 3) { $log->log_level(DEBUG);
     } elsif ($self->{debug} == 4) { $log->log_level(TRACE);
