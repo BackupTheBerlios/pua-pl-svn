@@ -305,11 +305,14 @@ sub sip_got_message {
     foreach $h (@handlers) {
         ($m, $reply) = $h->check_message($header, $content, $heap->{'peer_address'});
         if (defined $m) {
-            # inform control function
-            $_[KERNEL]->post(pua => $m => $header => $content);
+
             if (defined $reply) { # in case of NOTIFY
 	        $_[KERNEL]->post(pua => send_udp_message => $reply => 0);
             }
+
+            # inform control function
+            $_[KERNEL]->post(pua => $m => $header => $content);
+
             $done++;
         }
     }
@@ -367,6 +370,14 @@ sub sip_send_message {
                 $log->write(SPEW, "client: sending ".$msg);
 
 		$heap->{server}->put($msg); # put the sip message
+
+                # trace it
+		if ($options->{'trace'}) {
+		    $log->write(NOTICE, '>>>>>>');
+		    foreach (split ($CRLF, $msg)) {
+			$log->write(NOTICE, '>>> '. $_);
+		    }
+		}
             },
 
 	    ConnectError => sub { 
@@ -432,6 +443,13 @@ sub udp_send {
     send($heap->{udp_socket}, $message, 0, $remote_address) 
         == length($message) or
             die "$SIP_USER_AGENT: Trouble sending udp message: $!";
+
+    if ($options->{'trace'}) {
+	$log->write(NOTICE, '>>>>>>');
+	foreach (split ($CRLF, $message)) {
+	    $log->write(NOTICE, '>>> '. $_);
+	}
+    }
 }
 
 
@@ -521,13 +539,22 @@ sub udp_read {
 sub append_input {
     my ($kernel, $heap, $input, $return_headers) = @_;
 
+    my $headers = $heap->{headers};
+
+    # trace the received message
+    if ($options->{'trace'}) {
+	if ($headers eq '') {
+	    $log->write(NOTICE, '<<<<<<');
+	}
+	$log->write(NOTICE, '<<< '. $input);
+    }
+
     if ($heap->{'content'} eq '') {
 
         # still in process to receive the headers
         chomp($input);
 	$input =~ s/\015//;
 
-	my $headers = $heap->{headers};
 	if ($headers ne '') {
   	    if ($input =~ /^\s+(\S.*)/) {
 	        # leading whitespace indicates continuation of the 
