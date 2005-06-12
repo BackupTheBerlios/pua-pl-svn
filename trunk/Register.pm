@@ -75,11 +75,17 @@ sub get_msg {
 		  'REGISTER '. $options->{registrar}.' SIP/2.0');
 
 
+    my $cont;
+    if ($options->{login} eq '') {
+	$cont = $options->{my_id},
+    } else {
+	$cont = 'sip:'.$options->{login}.'@'.$options->{my_host};
+    }
+
     $self->{transaction}
       ->set_param('headers', 
 #		  'Request-URI: '.$options->{domain} . $CRLF . FIXME
- 		  'Contact: <sip:'.$options->{login} . 
-		  '@'.$options->{my_host}.'>' . $CRLF . 
+ 		  'Contact: <'.$cont.'>' . $CRLF . 
 		  'Expires: '.$expiry);
 
     return $self->{transaction}->get_message();
