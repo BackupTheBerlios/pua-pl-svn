@@ -4,13 +4,19 @@
 # ppl.pl - Demonstrator and WEB UI for pua.pl. An online 
 # presence user agent and gateway http->sip. This provides 
 # a simple user interface of pua.pl, with the special crux 
-# that it is web based
+# that it is web based, i.e. running on some remote server.
+# See http://pua-pl.berlios.de for licence
+
+# $LastChangedDate$, Conny Holzhey
 
 use CGI qw/:standard/;
 use strict;
 
 my $query = new CGI;
-my $PATH_TO_PROG ='/home/conny/projects/sippoc/trunk/';
+# my $PATH_TO_PROG ='/home/holzhey-de/htdocs/cgi-bin/pua-pl/';
+my $PATH_TO_PROG =`pwd`;
+chomp $PATH_TO_PROG;
+$PATH_TO_PROG .= '/../';
 my $CRLF = "\015\012";
 
 # main program
@@ -38,16 +44,18 @@ unless ($proxy) {
  	    if ($query->param('registrar') ne '') {
 	        $opts .= '--registrar='.$query->param('registrar').' ';
 	    }
-        } elsif (defined $publish and $publish eq 'ON') {
-	    $opts = '-p -po -pe 60 ';
+        } 
+	if (defined $publish and $publish eq 'ON') {
+	    $opts .= '-p -po -pe 60 ';
  	    if ($query->param('status') ne '') {
 	        $opts .= '--status='.$query->param('status').' ';
 	    }
  	    if ($query->param('contact') ne '') {
 	        $opts .= '--contact='.$query->param('contact').' ';
 	    }
-        } elsif (defined $subscribe and $subscribe eq 'ON') {
-	    $opts = '-s -no -se 30 ';
+        } 
+	if (defined $subscribe and $subscribe eq 'ON') {
+	    $opts .= '-s -no -se 30 ';
  	    if ($query->param('watch') ne '') {
 	        $opts .= '--watch-id='.$query->param('watch').' ';
 	    }
@@ -56,7 +64,7 @@ unless ($proxy) {
         my $cmd = 'pua.pl '.$opts.' -d 1 --trace'.
           ' --proxy='    .$query->param('proxy').
 	  ' --my-sip-id='.$query->param('sip_id'). 
-	  ' --my-host=p549D61A1.dip.t-dialin.net'.
+	  # ' --my-host=p549D61A1.dip.t-dialin.net'.
 	    ($query->param('username') ? ' --username=' .
 	     $query->param('username') : '').
 	    ($query->param('password') ? ' --password=' .
@@ -68,17 +76,55 @@ unless ($proxy) {
 	# backticks!
 	my $out = `perl -I ${PATH_TO_PROG}lib -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd 2>&1`;
 
+	# write cmd to logfile
+	my $date = `date`;
+	chomp $date;
+	my $rho = remote_host();
+	# for logging, erase the password, if any
+	$cmd =~ s/--password=[^ ]*/--password=xxxx/;
+	print `echo $date, $rho: $cmd >> ${PATH_TO_PROG}/logfile 2>&1`;
+
+
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
 	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
-	print "<h3>SIP messages</h3>\n";
-	print "<p><table width=95%>\n";
-	my $m;
-	foreach $m (@messages) {
-	    print "<tr><td>$m</td></tr>\n";
+
+	if (@messages and $#messages > 0) {
+  	    print "<h3>SIP messages</h3>\n";
+	    print "<p><table width=95%>\n";
+	    my $m;
+	    foreach $m (@messages) {
+		print "<tr><td>$m</td></tr>\n";
+	    }
 	}
 	print "</table>\n";
     }
 }
+print <<'EOB';
+
+<center><small>Commercial use is not permitted. This script
+is open source, see <a href="http://pua-pl.berlios.de">here</a> for licence.
+Thanks to the <a href="http://pic.internet2.edu/">Presence and Integrated Communications Working Group</a> for hosting support. For questions or suggestions,
+please contact me: <script type="text/javascript">
+<!--
+	var first = 'ma';
+	var second = 'il';
+	var third = 'to:';
+	var address = 'yivi';
+	var domain = 'holzhey'+'&#46;&#100;&#101;';
+	document.write('<a href="');
+	document.write(first+second+third);
+	document.write(address);
+	document.write('&#64;');
+	document.write(domain);
+	document.write('" title="email Conny ');
+	document.write('Holzhey">');
+	document.write('Conny ');
+	document.write('Holzhey<\/a>');
+// -->
+</script></small></center></div>
+
+EOB
+
 print $query->end_html();
 
 
@@ -167,20 +213,20 @@ sub check_param {
     if (!defined $s || $s eq '' || $s eq 'sip:') { 
 	return "SIP id not specified.";
     }
-    unless ($s =~ /^([a-z.0-9:@])+$/i) {
+    unless ($s =~ /^([a-z._0-9:@])+$/i) {
 	return 'Invalid character in sip-id.';
     }
 
     my $u = $query->param('username');
     if (defined $u and $u ne '') {
-	unless ($u =~ /^([a-z.0-9:@])+$/i) {
+	unless ($u =~ /^([a-z._0-9:@])+$/i) {
 	    return 'Invalid character in user name.';
 	}
     }
 
     my $w = $query->param('password');
     if (defined $w and $w ne '') {
-        unless ($w =~ /^([a-z.0-9:])+$/i) {
+        unless ($w =~ /^([a-z._0-9:])+$/i) {
 	    return 'Invalid character in password. Due to security of '.
 	      'the web server the character set is limited to '.
 	      '[a-z.0-9:], even if other chars would be valid.';
@@ -193,12 +239,12 @@ sub check_param {
     }
 
     my $co = $query->param('contact');
-    if ($co ne '' && !($co =~ /^([a-z@.0-9:])+$/i)) {
+    if ($co ne '' && !($co =~ /^([a-z@._0-9:])+$/i)) {
 	return 'Invalid character in contact URI.';
     }
 
     my $wa = $query->param('watch');
-    if ($wa ne '' && !($wa =~ /^([a-z@.0-9:])+$/i)) {
+    if ($wa ne '' && !($wa =~ /^([a-z@._0-9:])+$/i)) {
 	return 'Invalid character in watcher URI.';
     }
 
@@ -268,14 +314,17 @@ sub print_form {
 	print "rfc-3903 (PUBLISH), rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), rfc-3863 (pidf).<p>\n";
 	
 	print "Running pua.pl thru this script limites the useage of pua.pl to a subset of ";
-	print "options - see <a href=\"index.html\">here</a> for the complete list of options.";
+	print "options - see <a href=\"http://pua-pl.berlios.de\">here</a> for the complete list of options.";
 	print "With this frontend, it is possible to do 3 things: register at a sip server, ";
 	print "publish presence information and check some other user's presence information. ";;
-	print "To do so, quite a number of parameter need to be known:<p>\n";
+	print "To do so, some parameter need to be filled in below.<p>\n";
     }
+    print "Mandatory input fields are marked with <font color=red>*</font>, ";
+    print "additionally at least one of the operations Register/Subscribe/Publish ";
+    print "should be selected.<p>\n";
 
     print $query->start_form(-name =>'tabform');
-    print "<table><tr><td>Proxy server name ";
+    print "<table><tr><td>Proxy server name <font color=red>*</font>";
     
     my $default;
     $default = $query->param('proxy');
@@ -322,7 +371,7 @@ sub print_form {
     print "using a secured connection, and the password will be shown literally in the traces.";
     print " So in case this password is valuable, please don't continue.<p>";
 
-    print "\n</td></tr><tr><td>Your SIP id\n";
+    print "\n</td></tr><tr><td>SIP id <font color=red>*</font>\n";
 
     $default = $query->param('sip_id');
     if (!defined $default) { 
@@ -337,9 +386,9 @@ sub print_form {
                             -default  => $default,
                             -override => 1
                             );
-    print "</td><td>\n";
+    print "<p></td><td>\n";
     print "The SIP id, needed to set your SIP identity, usualy a URI of the form ";
-    print '"sip:username@domain.org".';
+    print '"sip:username@domain.org".<p>';
 
     print "\n</td></tr></table>";
     print "<p><center>\n";
@@ -364,7 +413,6 @@ sub print_form {
 sub printRegisterForm {
     my $query = shift;
     my $reg = $query->param('register');
-
     print 'var pane1 = "<table width=90% class=\'pane_tbl\'><tr><td>'.
           '<table border=0><tr><td colspan=2>';
     print "<input type='checkbox' name='register' value='ON' ";
