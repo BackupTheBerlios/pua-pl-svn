@@ -417,7 +417,7 @@ sub sip_send_message {
 
 sub udp_send {
     my($kernel, $heap, $session, $message, $reply_expected) 
-      = @_[KERNEL, HEAP, SESSION, ARG0];
+      = @_[KERNEL, HEAP, SESSION, ARG0, ARG1];
 
     if ($reply_expected) {
 
@@ -426,7 +426,7 @@ sub udp_send {
         # is unchanged, we know we didn't receive a reply
 
         $heap->{'udp_received'} = 0; 
-        $kernel->delay('timeout_udp', 10); # 10 seconds
+        $kernel->delay('timeout_udp', 20); # 20 seconds
 
         sip_wait_message($kernel, $heap); # start listening
     }
@@ -467,7 +467,7 @@ sub udp_timeout {
     } else {
         # still waiting for responds
         # actually this may not be an error ... FIXME
-        die "$SIP_USER_AGENT: Timeout while sending SIP message via udp\n";
+        die "$SIP_USER_AGENT: Timeout while waiting for response SIP message via udp\n";
     }
 }
 
