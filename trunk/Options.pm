@@ -189,6 +189,8 @@ sub new {
                                    # have to register
     $self->{publish}   = 0;        # set in case we should publish our presence
     $self->{subscribe} = 0;        # set when subscription should be made
+    $self->{message}   = 0;        # not used, but maybe one day
+
     $self->{event_package} = 'presence';  # for subscription to watcher info
 
     $self->{register_once}  = 0; # terminate after first REGISTER
@@ -213,6 +215,7 @@ sub new {
 			    'subscribe|s'        => \$self->{subscribe},
 			    'event-package|ep=s' => \$self->{event_package},
 			    'publish|p'          => \$self->{publish},
+			    'message|m'          => \$self->{message},
 			    'my-sip-id|my-id|i=s'=> \$self->{my_id},
 			    'my-name=s'          => \$self->{my_name},
 			    'local-port|lp=i'    => \$self->{local_port},
