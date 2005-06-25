@@ -328,7 +328,7 @@ sub print_form {
     
     my $default;
     $default = $query->param('proxy');
-    if (!defined $default) { $default = 'proxy.someprovider.net'; }
+    if (!defined $default) { $default = 'pals.internet2.edu'; }
 
     print $query->textfield(-name     => "proxy",
                             -default  => $default,
