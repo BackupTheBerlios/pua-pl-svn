@@ -419,7 +419,7 @@ Common options:
     server, in combination with -u
 
   -x, --proxy=server: for the server name of the SIP proxy server,
-    e.g. -x=iptel.org
+    e.g. -x=pals.internet2.edu
 
   --options: List more exotic options
 
