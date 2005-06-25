@@ -1,8 +1,134 @@
 This is pua.pl, a command line presence user agent, written in perl.
-See doc/index.html for how to set it up. 
-This software comes with absolutely no warranty, see http://www.gnu.org/copyleft/gpl.html.
-
-26-May-2005, Conny Holzhey
+See doc/index.html for how to set it up. This software comes with 
+absolutely no warranty, see http://www.gnu.org/copyleft/gpl.html.
 
 version 1.$LastChangedRevision$
+
+25-Jun-2005, Conny Holzhey
+
+
+Change History:
+------------------------------------------------------------------------
+r28 | chy | 2005-06-25 10:34:24 +0200 (Sat, 25 Jun 2005) | 1 line
+
+Changed help output
+------------------------------------------------------------------------
+r27 | chy | 2005-06-25 10:18:07 +0200 (Sat, 25 Jun 2005) | 1 line
+
+licence issue made more clear
+------------------------------------------------------------------------
+r26 | chy | 2005-06-25 10:16:06 +0200 (Sat, 25 Jun 2005) | 1 line
+
+changed default sip proxy
+------------------------------------------------------------------------
+r25 | chy | 2005-06-21 21:16:35 +0200 (Tue, 21 Jun 2005) | 1 line
+
+add option for message
+------------------------------------------------------------------------
+r24 | chy | 2005-06-20 14:02:40 +0200 (Mon, 20 Jun 2005) | 2 lines
+
+many cosmetic changes, allow _ in URIs, derive path to pua.pl from pwd
+------------------------------------------------------------------------
+r23 | chy | 2005-06-20 14:00:55 +0200 (Mon, 20 Jun 2005) | 1 line
+
+fixed handling of udp timeout
+------------------------------------------------------------------------
+r22 | chy | 2005-06-12 11:11:41 +0200 (Sun, 12 Jun 2005) | 1 line
+
+new option for SIP message trace
+------------------------------------------------------------------------
+r21 | chy | 2005-06-12 11:10:55 +0200 (Sun, 12 Jun 2005) | 1 line
+
+added support for subscribe, added proper SIP message trace on resulting 
+page
+------------------------------------------------------------------------
+r20 | chy | 2005-06-12 11:09:52 +0200 (Sun, 12 Jun 2005) | 1 line
+
+Added workaround for pic SER, sends expiry duration of 1 (instead of 0). 
+Fixed notify_once, there were some notification termination reasons not 
+realy considered.
+------------------------------------------------------------------------
+r19 | chy | 2005-06-12 11:06:40 +0200 (Sun, 12 Jun 2005) | 1 line
+
+added styles for tabs
+------------------------------------------------------------------------
+r18 | chy | 2005-06-12 11:05:44 +0200 (Sun, 12 Jun 2005) | 1 line
+
+use CRLF also within pidf document
+------------------------------------------------------------------------
+r17 | chy | 2005-06-12 11:03:23 +0200 (Sun, 12 Jun 2005) | 1 line
+
+changed contact header so it makes use of sip id, if available
+------------------------------------------------------------------------
+r16 | chy | 2005-06-12 11:01:45 +0200 (Sun, 12 Jun 2005) | 1 line
+
+added support of better SIP message trace
+------------------------------------------------------------------------
+r15 | chy | 2005-06-04 21:19:27 +0200 (Sat, 04 Jun 2005) | 1 line
+
+Added first draft of tab panes for operation specific options
+------------------------------------------------------------------------
+r14 | chy | 2005-05-29 21:22:37 +0200 (Sun, 29 May 2005) | 1 line
+
+Add test for basic pidf as sent by pals.internet2.edu
+------------------------------------------------------------------------
+r13 | chy | 2005-05-29 21:21:31 +0200 (Sun, 29 May 2005) | 1 line
+
+set UDP message size to 64K
+------------------------------------------------------------------------
+r12 | chy | 2005-05-29 21:20:30 +0200 (Sun, 29 May 2005) | 1 line
+
+Added rudimentary register functionality, do many checks to avoid misuse 
+by interpretation of input
+------------------------------------------------------------------------
+r11 | chy | 2005-05-28 09:27:47 +0200 (Sat, 28 May 2005) | 1 line
+
+Added option for contact priority, added option for subscribe event 
+package name
+------------------------------------------------------------------------
+r10 | chy | 2005-05-26 20:53:33 +0200 (Thu, 26 May 2005) | 1 line
+
+still playing around with svn LastChangedRevision attrib
+------------------------------------------------------------------------
+r9 | chy | 2005-05-26 20:44:12 +0200 (Thu, 26 May 2005) | 1 line
+
+added README, and first fragment of ppl.pl
+------------------------------------------------------------------------
+r8 | chy | 2005-05-26 20:27:18 +0200 (Thu, 26 May 2005) | 1 line
+
+fixed some tests
+------------------------------------------------------------------------
+r7 | chy | 2005-03-25 09:27:23 +0100 (Fri, 25 Mar 2005) | 1 line
+
+chaned handlin of incomming SIP messages, now each handler has a chance 
+to decide if it is usefull or not, return 501 on each un-handled 
+incoming message
+------------------------------------------------------------------------
+r6 | chy | 2005-03-05 14:08:40 +0100 (Sat, 05 Mar 2005) | 1 line
+
+removed some of the default options, added instead sanity checks for 
+-i, -w, and adapted tc accordingly
+------------------------------------------------------------------------
+r5 | chy | 2005-03-04 20:58:54 +0100 (Fri, 04 Mar 2005) | 1 line
+
+tc for Proxy-Authorization fixed, corrected VERSION, set test output to 
+silent
+------------------------------------------------------------------------
+r4 | chy | 2005-03-04 20:38:34 +0100 (Fri, 04 Mar 2005) | 1 line
+
+removed date property from options, so rev at least should work
+------------------------------------------------------------------------
+r3 | chy | 2005-03-04 20:26:25 +0100 (Fri, 04 Mar 2005) | 1 line
+
+improved properties to enable svn keyword substitution, so the version 
+in user agent header looks better
+------------------------------------------------------------------------
+r2 | chy | 2005-03-04 20:01:17 +0100 (Fri, 04 Mar 2005) | 1 line
+
+changed properties to enable svn keyword substitution
+------------------------------------------------------------------------
+r1 | chy | 2005-03-04 19:13:27 +0100 (Fri, 04 Mar 2005) | 1 line
+
+initial revision
+------------------------------------------------------------------------
 

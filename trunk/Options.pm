@@ -424,7 +424,7 @@ Common options:
   --options: List more exotic options
 
 
-Publish options, use in combination with -p:
+Publish options, use in combination with -p: 
 
   -c, --contact=uri: The contact address to be published. Can be any 
     address, like email or telephone number. The addres should 
