@@ -14,9 +14,13 @@ use strict;
 
 my $query = new CGI;
 # my $PATH_TO_PROG ='/home/holzhey-de/htdocs/cgi-bin/pua-pl/';
-my $PATH_TO_PROG =`pwd`;
-chomp $PATH_TO_PROG;
-$PATH_TO_PROG .= '/../';
+# my $PATH_TO_PROG =`pwd`;
+# chomp $PATH_TO_PROG;  
+# $PATH_TO_PROG .= '/../';
+
+my $PATH_TO_PROG ='/home/conny/pua-pl/trunk/';
+my $PATH_TO_LIBS = '/home/conny/pua-pl/lib/lib/perl5/site_perl/5.6.1';
+
 my $CRLF = "\015\012";
 
 # main program
@@ -61,7 +65,7 @@ unless ($proxy) {
 	    }
 	}
 
-        my $cmd = 'pua.pl '.$opts.' -d 1 --trace'.
+        my $cmd = 'pua.pl '.$opts.' -d 1 --trace --local-port=5070'.
           ' --proxy='    .$query->param('proxy').
 	  ' --my-sip-id='.$query->param('sip_id'). 
 	  # ' --my-host=p549D61A1.dip.t-dialin.net'.
@@ -74,18 +78,19 @@ unless ($proxy) {
 	print "More to come, please wait ...<p>\n";
 
 	# backticks!
-	my $out = `perl -I ${PATH_TO_PROG}lib -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd 2>&1`;
+	my $out = `perl -I ${PATH_TO_LIBS} -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd 2>&1`;
 
 	# write cmd to logfile
 	my $date = `date`;
 	chomp $date;
 	my $rho = remote_host();
+
 	# for logging, erase the password, if any
 	$cmd =~ s/--password=[^ ]*/--password=xxxx/;
-	print `echo $date, $rho: $cmd >> ${PATH_TO_PROG}/logfile 2>&1`;
-
+	`echo $date, $rho: $cmd >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
+
 	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
 	if (@messages and $#messages > 0) {
@@ -428,7 +433,7 @@ sub printRegisterForm {
     print "/>";
 
     print '</td><td>Name of the registrar server, an uri like sip:someprovider.net:5060'.
-          ' is expected.. If no registrar is specified, the register request will be sent'.
+          ' is expected. If no registrar is specified, the register request will be sent'.
           ' to a server name constructed from your address (as specified with SIP id'.
           ' above). E.g. for a given SIP id sip:myname@domain.org, the registrar will'.
           ' be guessed as sip:domain.org.<p></td></tr></table></td></tr></table>";';
