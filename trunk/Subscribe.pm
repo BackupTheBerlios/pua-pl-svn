@@ -169,8 +169,8 @@ sub control {
 		$ret = 'x';
 	    }
 	} else {
-	    # exit
-	    $ret = 'x'; 
+	    # any other event, not for me
+	    $ret = 'running';
 	}
 
     } elsif ($state eq 'subs_running') {

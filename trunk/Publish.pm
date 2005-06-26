@@ -165,8 +165,8 @@ sub control {
 		$ret = 'x';
 	    }
 	} else {
-	    # exit
-	    $ret = 'x'; 
+	    # any other event, not for me
+	    $ret = 'running';
 	}
     } elsif ($state eq 'publ_running') {
         if ($event eq 'published') {
