@@ -18,7 +18,7 @@ my $query = new CGI;
 # chomp $PATH_TO_PROG;  
 # $PATH_TO_PROG .= '/../';
 
-my $PATH_TO_PROG ='/home/conny/pua-pl/trunk/';
+my $PATH_TO_PROG ='/home/conny/projects/sippoc/trunk/';
 my $PATH_TO_LIBS = '/home/conny/pua-pl/lib/lib/perl5/site_perl/5.6.1';
 
 my $CRLF = "\015\012";
@@ -63,18 +63,24 @@ unless ($proxy) {
  	    if ($query->param('watch') ne '') {
 	        $opts .= '--watch-id='.$query->param('watch').' ';
 	    }
+	    $opts .= '--event-package='.$query->param('package').' ';
 	}
 
-        my $cmd = 'pua.pl '.$opts.' -d 1 --trace --local-port=5070'.
+        my $cmd = 'pua.pl '.$opts.' -d 1 --local-port=5070'.
           ' --proxy='    .$query->param('proxy').
 	  ' --my-sip-id='.$query->param('sip_id'). 
 	  # ' --my-host=p549D61A1.dip.t-dialin.net'.
 	    ($query->param('username') ? ' --username=' .
 	     $query->param('username') : '').
 	    ($query->param('password') ? ' --password=' .
-	     $query->param('password') : '');
+	     $query->param('password') : '').
+            ' --trace';
 
-	print "<h3>Command line</h3>", $cmd, "<p>\n";
+	# for logging, erase the password, if any
+	my $cmd1 = $cmd;
+	$cmd1 =~ s/--password=[^ ]*/--password=xxxx/;
+
+	print "<h3>Command line</h3>", $cmd1, "<p>\n";
 	print "More to come, please wait ...<p>\n";
 
 	# backticks!
@@ -84,10 +90,7 @@ unless ($proxy) {
 	my $date = `date`;
 	chomp $date;
 	my $rho = remote_host();
-
-	# for logging, erase the password, if any
-	$cmd =~ s/--password=[^ ]*/--password=xxxx/;
-	`echo $date, $rho: $cmd >> ${PATH_TO_PROG}/logfile 2>&1`;
+	`echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
 
@@ -257,6 +260,13 @@ sub check_param {
     if ($st ne 'open' and $st ne 'closed') {
         return 'Invalid value for basic presence status, permitted are "open" or "closed"';
     }
+
+    my $ep = $query->param('package');
+    if ($ep ne 'presence' and $ep ne 'presence.winfo' and $ep ne 'presence.winfo.winfo') {
+	return 'Invalid value for event package, permitted are: presence, '.
+	  'presence.winfo and presence.winfo.winfo.';
+    }
+
     return '';
 } 
 
@@ -311,22 +321,28 @@ sub print_form {
     my $query = shift;
     my $long = shift;
     if ($long) {
-	print "\nThis is the Web UI page for <a href=\"http://pua-pl.berlios.de\">pua.pl</a>. ";
-	print "pua.pl itself is a simple SIP-based presence user agent, and this is a ";
-	print "user interface to run it - and a HTTP to SIP gateway.<p>\n";
-	print "pua.pl is a actually a command-line and it uses SIP/SIMPLE to communicate ";
-	print "to a server, and it supports partly the following standards: rfc-3261 (SIP), ";
-	print "rfc-3903 (PUBLISH), rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), rfc-3863 (pidf).<p>\n";
+	print "\nThis is the Web UI page for ";
+	print "<a href=\"http://pua-pl.berlios.de\">pua.pl</a>. ";
+	print "pua.pl itself is a simple SIP-based presence user agent, ";
+	print "and this is a user interface to run it - and a HTTP ";
+	print "to SIP gateway.<p>\n";
+
+	print "pua.pl is a actually a command-line and it uses SIP/SIMPLE ";
+	print "to communicate to a server, and it partly supports the ";
+	print "following standards: rfc-3261 (SIP), rfc-3903 (PUBLISH), ";
+	print "rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), rfc-3863 (pidf).<p>\n";
 	
-	print "Running pua.pl thru this script limites the useage of pua.pl to a subset of ";
-	print "options - see <a href=\"http://pua-pl.berlios.de\">here</a> for the complete list of options.";
-	print "With this frontend, it is possible to do 3 things: register at a sip server, ";
-	print "publish presence information and check some other user's presence information. ";;
+	print "Running pua.pl thru this script limites the useage to a ";
+	print "subset of options - see <a href=\"http://pua-pl.berlios.de\">";
+        print "here</a> for the complete list of options.";
+	print "With this frontend, it is possible to do 3 things: register ";
+	print "at a sip server, publish presence information and check ";
+	print "some other user's presence information. ";;
 	print "To do so, some parameter need to be filled in below.<p>\n";
     }
-    print "Mandatory input fields are marked with <font color=red>*</font>, ";
-    print "additionally at least one of the operations Register/Subscribe/Publish ";
-    print "should be selected.<p>\n";
+    print "Mandatory input fields are marked with <font color=red>*</font>,";
+    print " additionally at least one of the operations ";
+    print "Register/Subscribe/Publish should be selected.<p>\n";
 
     print $query->start_form(-name =>'tabform');
     print "<table><tr><td>Proxy server name <font color=red>*</font>";
@@ -339,12 +355,14 @@ sub print_form {
                             -default  => $default,
                             -override => 1
                             );
-    print "</td><td>\n";
-    print "Fill in the name of the SIP proxy server. A proxy server is like the single ";
-    print "entry to all the SIP servers, it is responsible to forward your request ";
-    print "to the correct SIP instance. To use a proxy server, typically a username and";
-    print "password is required, but there are also server that work without. A well-known ";
-    print "proxy server can be found at <a href=\"http://www.iptel.org\">iptel.org</a>.<p>";
+    print "<p></td><td>\n";
+    print "Fill in the name of the SIP proxy server. A proxy server is ";
+    print "the single entry to the SIP world, it is responsible ";
+    print "to forward any request to the correct SIP servers. To use ";
+    print "a proxy server, typically an account (username and password) ";
+    print "is required, but there are also server that work without. See ";
+    print "for instace <a href=\"http://www.iptel.org\">iptel.org</a> ";
+    print "for a SIP proxy server.<p>";
 
     print "\n</td></tr><tr><td>User name at the proxy server\n";
 
@@ -356,10 +374,11 @@ sub print_form {
                             -override => 1
                             );
     print "</td><td>\n";
-    print "In case the proxy server requires authentication, input here the user name, ";
-    print "as given to you by the operator of the proxy. In case you have not explicitly ";
-    print 'given a user name, but only a SIP id (like sip:name@domain.org) and a password, ';
-    print "take the <i>name</i> part of the SIP id.<p>\n";
+    print "In case the proxy server requires authentication, input here ";
+    print "the user name, as given to you by the operator of the proxy. ";
+    print "In case you have not explicitly given a user name, just a ";
+    print 'SIP id (like sip:name@domain.org), take the <i>name</i> part ';
+    print "of the SIP id.<p>\n";
 
     print "\n</td></tr><tr><td>Password for the proxy server\n";
 
@@ -371,10 +390,11 @@ sub print_form {
                             -override => 1
                             );
     print "</td><td>\n";
-    print "In case the proxy server requires authentication, input here the corresponding, ";
-    print "password. Note: the transmission to the web server where pua.pl runs is <b>not</b> ";
-    print "using a secured connection, and the password will be shown literally in the traces.";
-    print " So in case this password is valuable, please don't continue.<p>";
+    print "In case the proxy server requires authentication, input here the ";
+    print "corresponding password. Note: the transmission to the web server ";
+    print "where pua.pl runs is <b>not</b> using a secured connection, ";
+    print "and the password might be shown literally in the traces. ";
+    print "So in case this password is valuable, please don't continue.<p>";
 
     print "\n</td></tr><tr><td>SIP id <font color=red>*</font>\n";
 
@@ -392,8 +412,8 @@ sub print_form {
                             -override => 1
                             );
     print "<p></td><td>\n";
-    print "The SIP id, needed to set your SIP identity, usualy a URI of the form ";
-    print '"sip:username@domain.org".<p>';
+    print "The SIP id, needed to set your SIP identity, usualy a URI of ";
+    print 'the form "sip:username@domain.org".<p>';
 
     print "\n</td></tr></table>";
     print "<p><center>\n";
@@ -432,11 +452,13 @@ sub printRegisterForm {
     }
     print "/>";
 
-    print '</td><td>Name of the registrar server, an uri like sip:someprovider.net:5060'.
-          ' is expected. If no registrar is specified, the register request will be sent'.
-          ' to a server name constructed from your address (as specified with SIP id'.
-          ' above). E.g. for a given SIP id sip:myname@domain.org, the registrar will'.
-          ' be guessed as sip:domain.org.<p></td></tr></table></td></tr></table>";';
+    print '</td><td>Name of the registrar server, expects a URI like ';
+    print 'sip:someprovider.net:5060. If no registrar is specified, ';
+    print 'the register request will be sent to a server name ';
+    print 'constructed from your address (as specified with SIP id '.
+          'above). E.g. for a given SIP id sip:myname@domain.org, '.
+          'the registrar will be guessed as sip:domain.org.<p>'.
+          '</td></tr></table></td></tr></table>";';
 }
 
 
@@ -451,8 +473,13 @@ sub printSubscribeForm {
     print 'var pane2 = "<table width=90% class=\'pane_tbl\'><tr><td>'.
           '<table border=0><tr><td colspan=2>';
     print "<input type='checkbox' name='subscribe' value='ON' ";
-    if (defined $sub and $sub eq 'ON') { print 'checked'; }
-    print "/>&nbsp; Check if Subscribe operation should be performed.<p></td></tr>";
+
+    if (defined $sub and $sub eq 'ON') { 
+	print 'checked'; 
+    }
+
+    print "/>&nbsp; Check if Subscribe operation should be performed.".
+          "<p></td></tr>";
 
     print '<tr><td>URI to subscribe<br>';
     print "<input type='text' name='watch' ";
@@ -462,9 +489,32 @@ sub printSubscribeForm {
     }
     print "/>";
 
-    print '</td><td>URI to subscribe, i.e. the address of the person to '.
+    print '<p></td><td>URI to subscribe, i.e. the address of the person to '.
           ' watch. Expected is something like sip:moby@sea.com.'.
-          '<p></td></tr></table></td></tr></table>";';
+          '<p></td></tr><tr><td>';
+    print 'Event package<br><select '.
+          'name=\'package\' size=1><option';
+
+    my $pack = $query->param('package');
+    if (!defined $pack) { 
+        print ' selected'; 
+    } elsif ($pack eq 'presence') { 
+        print ' selected'; 
+    }
+    print '>presence</option><option';
+    if (defined $pack && $pack eq 'presence.winfo') {
+        print ' selected'; 
+    }
+    print '>presence.winfo</option><option';
+    if (defined $pack && $pack eq 'presence.winfo.winfo') {
+        print ' selected'; 
+    }
+    print '>presence.winfo.winfo</option></select></td><td>';
+    print 'Set this to <i>presence</i> in case you want to subscribe to '.
+          'the information, whether the person is online or not. '.
+	  'Set this to <i>presence.winfo</i> in case you want information '.
+	  'about who subscribes to the person\'s presence... '.
+	  '</td></tr></table></td></tr></table>";';
 }
 
 
