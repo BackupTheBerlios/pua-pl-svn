@@ -281,7 +281,7 @@ sub new {
         $self->usage_short("Local port number not understood.");
     }
 
-    unless ($self->{basic_status} eq 'open' || $self->{basic_status} eq 'open') {
+    unless ($self->{basic_status} eq 'open' || $self->{basic_status} eq 'closed') {
         $log->write(WARN, "Warning: basic status field value '$self->{basic_status}' ".
 		    "is not covered by RFC 3863, 'open' or 'closed' is expected.");
     }
