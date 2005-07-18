@@ -117,10 +117,8 @@ my $state = 'initializing';
 #
 
 sub control {
-    my ($kernel, $heap, $session, $header, $content) 
-      = @_[KERNEL, HEAP, SESSION, ARG0, ARG1];
+    my ($event, $kernel, $heap, $session, $header, $content) = @_;
     my $h;
-    my $event = $kernel->get_active_event();
 
     $log->write(DEBUG, "control: in state $state got event $event");
 
@@ -663,19 +661,19 @@ POE::Session->create(
     # have all in one place
 
     inline_states => {
-        started    => \&control,
-        registered => \&control,
-        subscribed => \&control,
-        published  => \&control,
-        ended      => \&control,
-        notified   => \&control,
-	subdelayed => \&control,
-	subexpired => \&control,
-	pubexpired => \&control,
-	regexpired => \&control,
-	regfailed  => \&control,
-	subfailed  => \&control,
-	pubfailed  => \&control,
+        started    => sub { control('started',    @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        registered => sub { control('registered', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        subscribed => sub { control('subscribed', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        published  => sub { control('published',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        ended      => sub { control('ended',      @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        notified   => sub { control('notified',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	subdelayed => sub { control('subdelayed', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	subexpired => sub { control('subexpired', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	pubexpired => sub { control('pubexpired', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	regexpired => sub { control('regexpired', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	regfailed  => sub { control('regfailed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	subfailed  => sub { control('subfailed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	pubfailed  => sub { control('pubfailed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
 
         get_datagram     => \&udp_read, # receiving data via udp
 	send_udp_message => \&udp_send, # sending data via udp
