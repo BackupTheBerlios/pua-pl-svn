@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset='iso-8859-1'" />
     <link rel="stylesheet" type="text/css" href="wp.css" />
     <meta name="description" content="pua.pl, a command line SIP/SIMPLE presence user agent" />
-    <meta name="keywords" content="SIP SIMPLE presence user agent command-line" />
+    <meta name="keywords" content="SIP SIMPLE presence user agent command-line test" />
     <meta name="geo.country" content="DE" />        
 </head>
 <body id="page">
@@ -96,7 +96,7 @@ other endpoints - instead a presence server is expected to handle this. <p>
 
 pua.pl is configured with command line options, not with config files. This
 makes it a bit inconvenient to use for human beings - the intention was to make
-its usable from other scripts or programs. These are the common command line 
+its usable from other scripts or programs, it is for instance suitable for testing a presence agent. These are the common command line 
 options required nearly for all operations:<p>
 <div class="item">
   <code>--my-sip-id=uri</code> (short form: <code>-i=uri</code>) to set your
@@ -108,7 +108,7 @@ options required nearly for all operations:<p>
   <code>--username=name (-u=name)</code> Username for authentification at the remote
     server<p>
 
-  <code>--password=name (-pw=name)</code>  Password for authentification at the remote
+  <code>--password=name (-pw=name)</code> Password for authentification at the remote
     server, in combination with -u.
 </div>
 
