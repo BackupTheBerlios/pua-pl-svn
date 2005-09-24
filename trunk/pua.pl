@@ -612,7 +612,7 @@ sub append_input {
 #
 # construct a 501 not implemented message message.
 # the Via headers, the From, To Call-ID and CSeq headers are taken
-# from the NOTIFY, and should be passed with the headers param
+# from the request, and should be passed with the headers param
 
 sub get_501 {
     my ($human_addr, $header) = @_;
