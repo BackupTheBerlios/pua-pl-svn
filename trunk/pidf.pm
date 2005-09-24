@@ -7,6 +7,7 @@
 #
 # $Date$, Conny Holzhey
 
+package pidf;
 
 
 use warnings;
@@ -60,7 +61,8 @@ sub pidf_parse {
     $cb_arg2   = $arg2;
 
     my $parser = new XML::Parser(Style => 'Stream');
-    $parser->setHandlers(Final=>\&handle_final);
+    $parser->setHandlers(Final    => \&handle_final);
+
     # the actual interpretatoin is done in the handlers below
     $parser->parse($doc);
 }
@@ -76,7 +78,7 @@ sub StartTag {
     if ($tag =~ /^(\w+:)?presence$/i) {
         my %e = %_;
 	foreach (keys %e) {
-	    next unless (/entity/);
+	    next unless (/entity/i);
   	    $out .= 'Presence information for '. $e{$_} . ":\n";
 	    $entity = $e{$_};
 	}
@@ -86,7 +88,7 @@ sub StartTag {
     if ($tag =~ /^(\w+:)?contact$/i) { 
         my %p = %_;
 	foreach (keys %p) {
-  	    next unless (/priority/);
+  	    next unless (/priority/i);
 
 	    # keep it 
 	    $pidf_info{'_priority'} = $p{$_};
@@ -140,7 +142,7 @@ sub EndTag {
     # $log->write(SPEW, "parser: EndTag $tag");
 
     if (defined($pidf_tag)) {
-        undef$pidf_tag;
+        undef $pidf_tag;
     }
 	
     # print all about the tuple when it is closed
