@@ -18,7 +18,7 @@ my $query = new CGI;
 # chomp $PATH_TO_PROG;  
 # $PATH_TO_PROG .= '/../';
 
-my $PATH_TO_PROG ='/home/conny/projects/sippoc/trunk/';
+my $PATH_TO_PROG ='/home/conny/projects/sippoc/pua-pl/trunk/';
 my $PATH_TO_LIBS = '/home/conny/pua-pl/lib/lib/perl5/site_perl/5.6.1';
 
 my $CRLF = "\015\012";
@@ -66,7 +66,7 @@ unless ($proxy) {
 	    $opts .= '--event-package='.$query->param('package').' ';
 	}
 
-        my $cmd = 'pua.pl '.$opts.' -d 1 --local-port=5070'.
+        my $cmd = 'pua.pl '.$opts.' -d 1 --local-port=5060'.
           ' --proxy='    .$query->param('proxy').
 	  ' --my-sip-id='.$query->param('sip_id'). 
 	  # ' --my-host=p549D61A1.dip.t-dialin.net'.
@@ -93,6 +93,10 @@ unless ($proxy) {
 	`echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
+
+        # write result to logfile
+        `echo "$res" >> ${PATH_TO_PROG}/logfile 2>&1`;
+        # `echo >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
