@@ -23,8 +23,8 @@ use Handler;            # super class
 use vars qw(@ISA);
 @ISA = qw(Handler);
 
-require pidf;           # my own submodule, for parsing pidf documents
-
+require pidf;           # my own submodule, for parsing pidf XML documents
+require watcherinfo;    # my own submodule, for parsing watchinfo documents
 
 
 ###### methods ##############################################################
@@ -80,7 +80,6 @@ sub get_msg {
     # set some extra header lines, subscribe specific
 
     $headers = 'Event: '.$self->{package}.$CRLF;
-
     if ($self->{package} =~ /\.winfo$/i) {
         $headers .= 'Accept: application/watcherinfo+xml'.$CRLF;
     } else {
@@ -168,6 +167,8 @@ sub control {
 		$self->change_state('subs_ignoring');
 		$ret = 'x';
 	    }
+	} elsif ($event eq 'ended') {
+            $ret = 'x';
 	} else {
 	    # any other event, not for me
 	    $ret = 'running';
@@ -210,6 +211,7 @@ sub control {
 
 	        # all headers are ok, parse the body, the message content
                 if ($self->{package} eq 'presence') {
+
                     # body should be pidf document
                     pidf_parse($content, 
                                $log, 
@@ -230,7 +232,29 @@ sub control {
                                $self);         # arg 2
 
                     $self->clean_tuples(); # remove the remaining old ones
+
                 } elsif ($self->{package} eq 'presence.winfo') {
+
+                    # subscription to watcher info, body is watcherinfo.xml format
+                    watchinfo_parse($content, 
+                                    $log, 
+                                    sub {           # callback #1
+                                        my $self = $_[1];
+                                        my $options = $self->{options};
+                                        if ($options->{exec_notify} ne '') {
+                                            open(EXEC, '| '.$options->{exec_notify}) or
+                                                die("$SIP_USER_AGENT: Can't run ".
+                                                    $options->{exec_notify}. ", $!");
+                                            print EXEC $_[0];
+                                            close EXEC;
+                                        };
+                                        $self->{log}->write(WARN, 
+                                                            $SIP_USER_AGENT.': '.$_[0]);
+                                    },
+                                    $self,          # arg 1
+                                    undef, # callback #2
+                                    $self);         # arg 2
+
                     $self->{log}->write(WARN, "watcherinfo: $content");
                 }
 
