@@ -8,6 +8,7 @@
 # $Date$, Conny Holzhey
 
 
+package watcherinfo;
 
 use warnings;
 use strict;
@@ -17,6 +18,13 @@ use XML::Parser;        # to parse xml documents
 use lib qw(.);          # the libs below are local, so allow to load them
 use Log::Easy qw(:all); # for logging
 
+require Exporter;
+
+our(@ISA, @EXPORT);
+@ISA = qw(Exporter);
+@EXPORT = qw(watcherinfo_parse);
+
+
 
 
 # global variables, internal states of the xml parser
@@ -24,6 +32,7 @@ use Log::Easy qw(:all); # for logging
 my $winfo_tag;     # the last tag name identified
 my %winfo;         # the collected info for a single watcher entry
 my $winfo_package; # global for the package watched
+my $resource;      # watched resource name found inf the watcher-list statement
 my $log;           # of type Log::Easy
 my $out;           # a text decribing the pidf
 my $callback1;     # specified by the caller, called with the descriptive 
@@ -33,7 +42,7 @@ my $callback2;     # specified by the caller, called with the result of parsing,
 my $cb_arg1;       # to give the app a chance to pass state info to the callback1
 my $cb_arg2;       # to give the app a chance to pass state info to the callback2
 
-my $resource;      # watched resource name found inf the watcher-list statement
+
 
 #
 # parse the watcherinfo document, as it came with the NOTIFY message.
@@ -61,7 +70,8 @@ sub watcherinfo_parse {
     $cb_arg2   = $arg2;
 
     my $parser = new XML::Parser(Style => 'Stream');
-    $parser->setHandlers(Final=>\&handle_final);
+    $parser->setHandlers(Final    => \&watcherinfo_handleFinal);
+
     # the actual interpretatoin is done in the handlers below
     $parser->parse($doc);
 }
@@ -72,20 +82,21 @@ sub watcherinfo_parse {
 sub StartTag {
     shift;
     my $tag = shift;
-    # $log->write(SPEW, "parser: StartTag $tag");
+    $log->write(SPEW, "parser: StartTag $tag");
 
     if ($tag =~ /^(\w+:)?watcher-list$/i) {
         my %r = %_; # get the params
 	foreach (keys %r) {
 	    if (/resource/i) {
                 $out .= 'Watcher information for '. $r{$_} . ":\n";
-                $resouce = $r{$_};
+                $resource = $r{$_};
             } elsif (/package/i) {
                 $winfo_package = $r{$_};
             } elsif (/state/i) {
                 # could add partial update handling here
             }
 	}
+        $winfo_tag = 'watcher-list';
     } 
 
     # keep the attributes of the watcher tag
@@ -105,9 +116,8 @@ sub StartTag {
                 $winfo{'expiration'} = $p{$_}; 
             } 
 	}
+        $winfo_tag = 'watcher';
     }
-
-    $winfo_tag = $tag;
 }
 
 
@@ -115,11 +125,11 @@ sub StartTag {
 # handler for the xml parser, called on everything which is not a tag
 
 sub Text {
-    my $text = shift,
+    my $text = $_;
 
-    # $log->write(SPEW, "parser: Tag: ", (defined $winfo_tag? $winfo_tag: 'none'), " text $_");
+    $log->write(SPEW, "parser: Tag: ", (defined $winfo_tag? $winfo_tag: 'none'), " text $_");
 
-    if (defined($winfo_tag) && $winfo_tag =~ /^watcher$/i) {
+    if (defined $winfo_tag && $winfo_tag =~ /^watcher$/i) {
 
         # keep only texts that have non-whitespace content
         unless (/^\s+$/s) {
@@ -131,24 +141,25 @@ sub Text {
                 $out .= $winfo{'status'} . ' ';
             }
 
-            $out .= 'Subscription of '.$resource;
-            if (exists $winfo_package) {
+            $out .= 'subscription of '.$resource;
+            if (defined $winfo_package) {
                 $out .= '\'s '.$winfo_package;
             }
-            $out .= " by\n";
+            $out .= " by\n    ";
 
-            if (exists $winfo_info{'display-name'}) {
-                $out .= $winfo_info{'display-name'}.' <'.$text.">\n";
+            if (exists $winfo{'display-name'}) {
+                $out .= $winfo{'display-name'}.' <'.$text.">\n";
             } else {
                 # no display name
                 $out .= $text."\n";
             }
 
-            if (exists $winfo_info{'duration-subscribed'}) {
-                $out .= '  last time renewed '.$winfo_info{'duration-subscribed'}." seconds ago,\n";
+            if (exists $winfo{'duration-subscribed'}) {
+                $out .= '    last time renewed '.$winfo{'duration-subscribed'}.
+                        " seconds ago\n";
             } 
-            if (exists $winfo_info{'expiration'}) {
-                $out .= '  subscription ends in '.$winfo_info{'expiration'}." seconds\n";
+            if (exists $winfo{'expiration'}) {
+                $out .= '    subscription ends in '.$winfo{'expiration'}." seconds\n";
             } 
 	}
     }
@@ -170,12 +181,12 @@ sub EndTag {
         undef $winfo_package;
     }
 
-    undef %winfo_info; # for the next watcher
+    undef %winfo; # for the next watcher
 }
 
 #
 # handler called when is parsing finished. Call parent CB
-sub handle_final {
+sub watcherinfo_handleFinal {
     if (defined $callback1) {
 	&$callback1($out, $cb_arg1);	
     } else {
