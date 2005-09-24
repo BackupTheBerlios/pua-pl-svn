@@ -1,4 +1,4 @@
-#!/usr/bint/perl -w
+#!/usr/bin/perl -w
 
 
 # some tests for pidf.pl, a simple pidf parser
