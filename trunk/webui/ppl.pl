@@ -19,7 +19,7 @@ my $query = new CGI;
 # $PATH_TO_PROG .= '/../';
 
 my $PATH_TO_PROG ='/home/conny/projects/sippoc/pua-pl/trunk/';
-my $PATH_TO_LIBS = '/home/conny/pua-pl/lib/lib/perl5/site_perl/5.6.1';
+my $PATH_TO_LIBS = '.';
 
 my $CRLF = "\015\012";
 
@@ -96,7 +96,6 @@ unless ($proxy) {
 
         # write result to logfile
         `echo "$res" >> ${PATH_TO_PROG}/logfile 2>&1`;
-        # `echo >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
