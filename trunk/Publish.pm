@@ -164,6 +164,8 @@ sub control {
 		$self->change_state('pub_ignoring');
 		$ret = 'x';
 	    }
+	} elsif ($event eq 'ended') {
+            $ret = 'x';
 	} else {
 	    # any other event, not for me
 	    $ret = 'running';
