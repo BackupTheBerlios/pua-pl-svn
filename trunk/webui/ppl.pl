@@ -18,7 +18,7 @@ my $query = new CGI;
 # chomp $PATH_TO_PROG;  
 # $PATH_TO_PROG .= '/../';
 
-my $PATH_TO_PROG ='/home/conny/projects/sippoc/pua-pl/trunk/';
+my $PATH_TO_PROG ='/pua-pl/';
 my $PATH_TO_LIBS = '.';
 
 my $CRLF = "\015\012";
@@ -69,7 +69,7 @@ unless ($proxy) {
         my $cmd = 'pua.pl '.$opts.' -d 1 --local-port=5060'.
           ' --proxy='    .$query->param('proxy').
 	  ' --my-sip-id='.$query->param('sip_id'). 
-	  # ' --my-host=p549D61A1.dip.t-dialin.net'.
+	  ' --my-host=www.in-ulm-herum.de'.
 	    ($query->param('username') ? ' --username=' .
 	     $query->param('username') : '').
 	    ($query->param('password') ? ' --password=' .
@@ -84,13 +84,13 @@ unless ($proxy) {
 	print "More to come, please wait ...<p>\n";
 
 	# backticks!
-	my $out = `perl -I ${PATH_TO_LIBS} -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd 2>&1`;
+	my $out = `perl -I ${PATH_TO_LIBS} -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd`;
 
 	# write cmd to logfile
-	my $date = `date`;
-	chomp $date;
-	my $rho = remote_host();
-	`echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
+	# my $date = `date`;
+	# chomp $date;
+	# my $rho = remote_host();
+	#`echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
 
@@ -114,7 +114,7 @@ print <<'EOB';
 
 <center><small>Commercial use is not permitted. This script
 is open source, see <a href="http://pua-pl.berlios.de">here</a> for licence.
-Thanks to the <a href="http://pic.internet2.edu/">Presence and Integrated Communications Working Group</a> for hosting support. For questions or suggestions,
+Thanks to <a href="http://breitnetz.de/">IT Technologie</a> for hosting support. For questions or suggestions,
 please contact me: <script type="text/javascript">
 <!--
 	var first = 'ma';
@@ -216,7 +216,7 @@ sub check_param {
     if ($p eq '') { 
 	return "SIP Proxy server name not defined.";
     }
-    unless ($p =~ /^([a-z.0-9:])+$/i) {
+    unless ($p =~ /^([-a-z.0-9:])+$/i) {
 	return 'Invalid character in proxy server name.';
     }
 
@@ -224,20 +224,20 @@ sub check_param {
     if (!defined $s || $s eq '' || $s eq 'sip:') { 
 	return "SIP id not specified.";
     }
-    unless ($s =~ /^([a-z._0-9:@])+$/i) {
+    unless ($s =~ /^([-a-z._0-9:@])+$/i) {
 	return 'Invalid character in sip-id.';
     }
 
     my $u = $query->param('username');
     if (defined $u and $u ne '') {
-	unless ($u =~ /^([a-z._0-9:@])+$/i) {
+	unless ($u =~ /^([-a-z._0-9:@])+$/i) {
 	    return 'Invalid character in user name.';
 	}
     }
 
     my $w = $query->param('password');
     if (defined $w and $w ne '') {
-        unless ($w =~ /^([a-z._0-9:])+$/i) {
+        unless ($w =~ /^([-a-z._0-9:])+$/i) {
 	    return 'Invalid character in password. Due to security of '.
 	      'the web server the character set is limited to '.
 	      '[a-z.0-9:], even if other chars would be valid.';
@@ -245,17 +245,17 @@ sub check_param {
     }
 
     my $re = $query->param('registrar');
-    if ($re ne '' && !($re =~ /^([a-z.0-9:])+$/i)) {
+    if ($re ne '' && !($re =~ /^([-a-z.0-9:])+$/i)) {
 	return 'Invalid character in registrar server name.';
     }
 
     my $co = $query->param('contact');
-    if ($co ne '' && !($co =~ /^([a-z@._0-9:])+$/i)) {
+    if ($co ne '' && !($co =~ /^([-a-z@._0-9:])+$/i)) {
 	return 'Invalid character in contact URI.';
     }
 
     my $wa = $query->param('watch');
-    if ($wa ne '' && !($wa =~ /^([a-z@._0-9:])+$/i)) {
+    if ($wa ne '' && !($wa =~ /^([-a-z@._0-9:])+$/i)) {
 	return 'Invalid character in watcher URI.';
     }
 
@@ -590,7 +590,7 @@ print <<'EOH'
 	 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
 <head><title>pua.pl, presence user agent web UI &amp; gateway</title>
-<link rel="stylesheet" type="text/css" href="/pua-pl/doc/wp.css" />
+<link rel="stylesheet" type="text/css" href="../doc/wp.css" />
 
 EOH
 }
