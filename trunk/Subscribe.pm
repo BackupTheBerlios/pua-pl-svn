@@ -59,7 +59,7 @@ sub get_msg {
     my $options = $self->{options};
     my $headers = '';
 
-    if ($expires == 0) { $expires = 1; } # FIXME
+    # if ($expires == 0) { $expires = 1; } 
 
     unless (exists $self->{transaction}) {
 	$self->{transaction} 
