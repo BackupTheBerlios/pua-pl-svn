@@ -38,7 +38,7 @@ my $expected = 'Presence information for pres:someone@example.com:
 
 my $res;
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'using a namespace');
 
 #############################################################################
@@ -53,7 +53,7 @@ $doc = '<?xml version="1.0" encoding="UTF-8"?>
        <contact priority="0.8">tel:+09012345678</contact>
      </tuple></presence>';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'using a default XML namespace');
 
 #############################################################################
@@ -76,7 +76,7 @@ $expected = 'Presence information for pres:someone@example.com:
     using address: im:someone@example.com
 ';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'including a location status');
 
 #############################################################################
@@ -119,7 +119,7 @@ $expected = 'Presence information for pres:someone@example.com:
   note: I\'ll be in Tokyo next week
 ';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'default namespace with status extension');
 
 #############################################################################
@@ -154,7 +154,7 @@ $expected = 'Presence information for pres:someone@example.com:
     using address: im:someone@mobilecarrier.net
 ';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'own namespace with other extensions');
 
 #############################################################################
@@ -182,7 +182,7 @@ $expected = 'Presence information for pres:someone@example.com:
     using address: tel:+09012345678
 ';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'mandatory to understand elements');
 
 
@@ -201,7 +201,7 @@ $doc = '<?xml version="1.0"?>
 
 $expected = '';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'lpidf document');
 
 #############################################################################
@@ -233,7 +233,7 @@ sub callback {
     is ($cb_arg, 'Hammelswade', 'Callback2 arg arg');
 }
 
-pidf_parse($doc, $log, undef, undef, \&callback, 'Hammelswade');
+pidf::pidf_parse($doc, $log, undef, undef, \&callback, 'Hammelswade');
 
 #############################################################################
 
@@ -256,6 +256,6 @@ $expected = 'Presence information for sip:yivi@pals.internet2.edu:
     using address: sip:conny@garbo
 ';
 
-pidf_parse($doc, $log, sub{ $res = $_[0]; });
+pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
 is($res, $expected, 'including geopriv');
 
