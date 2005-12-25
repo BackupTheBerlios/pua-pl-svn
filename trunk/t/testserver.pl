@@ -1075,26 +1075,35 @@ sub start_tcp_server {
 	      $heap->{'in_content'} = 0; # flag needed in ClientInput
 	      $heap->{'content'} = '';
 	      $heap->{'input_buf'} = '';
+              $heap->{'clen'} = 0;
 	  },
 
 	  ClientInput => sub {
 	      my ( $kernel, $session, $heap, $input ) = @_[KERNEL, SESSION, HEAP, ARG0];
-	      #print "test-server: Session ", $session->ID(), " got input: $input\n";
+	      # print "test-server: Session ", $session->ID(), " got input: $input\n";
 	      $heap->{'input_buf'} .= $input ."\n";
 	      if ($input eq '' && $heap->{'in_content'} == 0) {
- 	          #print $heap->{'input_buf'};
+ 	          # print "test-server: " . $heap->{'input_buf'};
 	          $heap->{'in_content'} = 1; # found it
 		  $heap->{'content'} = '';
 	      }
 	      elsif ($heap->{'in_content'}) {
 		  $heap->{'content'} .= $input."\n";
 	      }
-	    
+	   
 	      if ($heap->{'in_content'} 
 		  && $heap->{'input_buf'} =~ /Content-Length:\s*(\d+)/s) {
-		  my $clen = $1;
-		  if (length($heap->{'content'}) >= $clen) {
-		      #print "content: $heap->{'content'}\n";
+		  if ($heap->{'clen'} == 0) {
+                      $heap->{'clen'} = $1;
+                  } else {
+                      # for correction of LFs
+                      $heap->{'clen'}--;
+                  }
+
+                  # print "test-server: length content ", length($heap->{'content'}), "clen: $heap->{'clen'}\n";
+
+		  if (length($heap->{'content'}) >= $heap->{'clen'}) {
+		      print "test-server: content: $heap->{'content'}\n";
 		      $kernel->post('test-server' 
 				    => 'continue' 
 				    => $heap->{'input_buf'} 
