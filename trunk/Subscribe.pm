@@ -213,23 +213,23 @@ sub control {
                 if ($self->{package} eq 'presence') {
 
                     # body should be pidf document
-                    pidf_parse($content, 
-                               $log, 
-                               sub {           # callback #1
-                                   my $self = $_[1];
-                                   my $options = $self->{options};
-                                   if ($options->{exec_notify} ne '') {
-                                       open(EXEC, '| '.$options->{exec_notify}) or
-                                           die("$SIP_USER_AGENT: Can't run ".
-                                               $options->{exec_notify}. ", $!");
-                                       print EXEC $_[0];
-                                       close EXEC;
-                                   };
-                                   $self->{log}->write(WARN, $SIP_USER_AGENT.': '.$_[0]);
-                               },
-                               $self,          # arg 1
-                               \&handle_tuple, # callback #2
-                               $self);         # arg 2
+                    pidf::pidf_parse($content, 
+                                     $log, 
+                                     sub {           # callback #1
+                                       my $self = $_[1];
+                                       my $options = $self->{options};
+                                       if ($options->{exec_notify} ne '') {
+                                           open(EXEC, '| '.$options->{exec_notify}) or
+                                               die("$SIP_USER_AGENT: Can't run ".
+                                                   $options->{exec_notify}. ", $!");
+                                           print EXEC $_[0];
+                                           close EXEC;
+                                       };
+                                       $self->{log}->write(WARN, $SIP_USER_AGENT.': '.$_[0]);
+                                     },
+                                     $self,          # arg 1
+                                     \&handle_tuple, # callback #2
+                                     $self);         # arg 2
 
                     $self->clean_tuples(); # remove the remaining old ones
 
