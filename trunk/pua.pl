@@ -599,7 +599,7 @@ sub append_input {
  
 	# FIXME: what if delimiter is only \n ?
 	$heap->{content_len} -= length($input) + length($CRLF);
-	if ($heap->{content_len} == 0) {
+	if ($heap->{content_len} <= 0) {
 	    # finished, inform session and close this
 	    $kernel->post('pua' => sip_got_message 
 			        => $heap->{headers}
