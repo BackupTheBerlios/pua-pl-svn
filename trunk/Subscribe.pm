@@ -262,6 +262,7 @@ sub control {
 		    # ready
 		    $ret = 'x';
 		    $self->change_state('subs_ignoring');
+                    $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
 		} else {
 		    $ret = 'running';
 		    # stay in this state, wait for next
@@ -275,6 +276,7 @@ sub control {
 		if ($options->{notify_once}) {
 		    # ready
 		    $ret = 'x';
+                    $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
 		    $self->change_state('subs_ignoring');
 		} else {
 		    $self->change_state('subs_waiting');
@@ -288,6 +290,7 @@ sub control {
 		if ($options->{notify_once}) {
 		    # ready
 		    $ret = 'x';
+                    $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
 		    $self->change_state('subs_ignoring');
 		} else {
 		    # immediately try again to subscribe
