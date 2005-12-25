@@ -98,7 +98,7 @@ WWW-Authenticate: Digest realm="iptel.org", nonce="41a27b3b6184801b57dba727f7380
 # do some basic initializations
 sub _start {
     $_[KERNEL]->alias_set('test-server');
-    $_[HEAP]->{'beat_cnt'} = 0;
+    $_[HEAP]->{'beat_cnt'} = 0; # start with higher numbers to skip basic tests
     $_[HEAP]->{'int_cnt'} = 0;
     start_tcp_server();
     $_[KERNEL]->delay('continue', 1); # give the server time to start
@@ -963,8 +963,10 @@ my $pres = `cat /tmp/t2`;
 	`rm /tmp/t2`;
 	`rm /tmp/t3`;
 
-	$kernel->delay('send_udp_message', 2,
-		       get_notify('open'));
+        my $nm = get_notify('open');
+        $nm = substr($nm, 0, -2); # remove trailing CRLF
+
+	$kernel->delay('send_udp_message', 2, $nm);
     }
     elsif ($heap->{'int_cnt'} == 4) {
 
@@ -1007,10 +1009,10 @@ my $pres = `cat /tmp/t2`;
 	ok(-e '/tmp/t1', 'NOTIFY: exec called when note change');
 	ok(!(-e '/tmp/t3'), 'NOTIFY: exec-closed not called when note change');
 	ok(!(-e '/tmp/t4'), 'NOTIFY: exec-open not called when note change');
-	$kernel->delay('send_udp_message', 2, 'INVITE sip:conny@192.168.123.2 SIP/2.0'.$CRLF..$CRLF);        
+	$kernel->delay('send_udp_message', 2, 'INVITE sip:conny@192.168.123.2 SIP/2.0'.$CRLF.$CRLF);        
     }
-    elsif ($heap->{'int_cnt'} == 7) {
-        # like($input, qr/501 not implemented/i, "INVITE correctly rejected");
+    elsif ($heap->{'int_cnt'} == 8) {
+        like($input, qr/501 not implemented/i, "INVITE correctly rejected");
     }    
     $heap->{'int_cnt'}++;
 }
@@ -1103,7 +1105,7 @@ sub start_tcp_server {
                   # print "test-server: length content ", length($heap->{'content'}), "clen: $heap->{'clen'}\n";
 
 		  if (length($heap->{'content'}) >= $heap->{'clen'}) {
-		      print "test-server: content: $heap->{'content'}\n";
+		      # print "test-server: content: $heap->{'content'}\n";
 		      $kernel->post('test-server' 
 				    => 'continue' 
 				    => $heap->{'input_buf'} 
