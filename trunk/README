@@ -1,134 +1,426 @@
-This is pua.pl, a command line presence user agent, written in perl.
+lsis is pua.pl, a command line presence user agent, written in perl.
 See doc/index.html for how to set it up. This software comes with 
 absolutely no warranty, see http://www.gnu.org/copyleft/gpl.html.
 
 version 1.$LastChangedRevision$
 
-25-Jun-2005, Conny Holzhey
+
+
+26-Dec-2005, Conny Holzhey, new "stable" release 1.58, mainly bugfixing
+25-Jun-2005, Conny Holzhey, initial revision
+
 
 
 Change History:
+
+
+------------------------------------------------------------------------
+r57 | chy | 2005-12-26 13:01:33 +0100 (Mon, 26 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/webui/ppl.pl
+
+again reintroduced logging
+------------------------------------------------------------------------
+r56 | chy | 2005-12-26 12:37:38 +0100 (Mon, 26 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/webui/ppl.pl
+
+added expiry opts for register and publish
+------------------------------------------------------------------------
+r55 | chy | 2005-12-25 18:02:08 +0100 (Sun, 25 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/pua.pl
+
+Fixed length calculation of notify bodies
+------------------------------------------------------------------------
+r54 | chy | 2005-12-25 18:01:13 +0100 (Sun, 25 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/t/testserver.pl
+
+added test case for notify message w/o trailing CRLF
+------------------------------------------------------------------------
+r53 | chy | 2005-12-25 17:59:37 +0100 (Sun, 25 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/Subscribe.pm
+
+Added more debug output when leaving due to --notify-once
+------------------------------------------------------------------------
+r52 | chy | 2005-12-25 11:07:45 +0100 (Sun, 25 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/Subscribe.pm
+
+using correct package name for pidf parser
+------------------------------------------------------------------------
+r51 | chy | 2005-12-25 11:06:31 +0100 (Sun, 25 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/t/testserver.pl
+
+fixed calculation of content length
+------------------------------------------------------------------------
+r50 | chy | 2005-12-10 10:24:51 +0100 (Sat, 10 Dec 2005) | 1 line
+Changed paths:
+   M /trunk/t/pidf.t
+
+pidf parser tests work again
+------------------------------------------------------------------------
+r49 | chy | 2005-10-09 17:47:24 +0200 (Sun, 09 Oct 2005) | 1 line
+Changed paths:
+   M /trunk/doc/index.html
+
+mentioned online demo at www.in-ulm-herum.de
+------------------------------------------------------------------------
+r48 | chy | 2005-10-09 17:46:53 +0200 (Sun, 09 Oct 2005) | 1 line
+Changed paths:
+   M /trunk/webui/ppl.pl
+
+adaptions for online demo at www.in-ulm-herum.de
+------------------------------------------------------------------------
+r47 | chy | 2005-10-09 17:46:17 +0200 (Sun, 09 Oct 2005) | 1 line
+Changed paths:
+   M /trunk/Subscribe.pm
+
+Expiry date set to 0 again, for non-pals servers
+------------------------------------------------------------------------
+r46 | chy | 2005-09-24 15:06:33 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/webui/ppl.pl
+
+removed path to lib
+------------------------------------------------------------------------
+r45 | chy | 2005-09-24 14:58:48 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/webui/ppl.pl
+
+re-activated logging
+------------------------------------------------------------------------
+r44 | chy | 2005-09-24 13:55:18 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   A /trunk/t/watcherinfo.t
+
+initial revision
+------------------------------------------------------------------------
+r43 | chy | 2005-09-24 13:54:51 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   A /trunk/Message.pm
+
+initial revision
+------------------------------------------------------------------------
+r42 | chy | 2005-09-24 13:53:15 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/Subscribe.pm
+
+support subscription of watcherinfo
+------------------------------------------------------------------------
+r41 | chy | 2005-09-24 13:52:18 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/Publish.pm
+
+Bugfix
+------------------------------------------------------------------------
+r40 | chy | 2005-09-24 13:50:54 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/pidf.pm
+
+made this module to a package, allow case insensitive key word parsing of pidf docs
+------------------------------------------------------------------------
+r39 | chy | 2005-09-24 13:49:00 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/t/pidf.t
+
+typo corrected
+------------------------------------------------------------------------
+r38 | chy | 2005-09-24 13:48:14 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/pua.pl
+
+corrected comment
+------------------------------------------------------------------------
+r37 | chy | 2005-09-24 13:46:03 +0200 (Sat, 24 Sep 2005) | 1 line
+Changed paths:
+   M /trunk/watcherinfo.pm
+
+completed watcher info parser
+------------------------------------------------------------------------
+r36 | chy | 2005-07-18 11:26:34 +0200 (Mon, 18 Jul 2005) | 1 line
+Changed paths:
+   M /trunk/pua.pl
+
+removed get_active_event, which is not available in all POE distributions
+------------------------------------------------------------------------
+r35 | chy | 2005-07-18 09:47:36 +0200 (Mon, 18 Jul 2005) | 1 line
+Changed paths:
+   M /trunk/doc/index.html
+
+update for mentioning test capabilities
+------------------------------------------------------------------------
+r34 | chy | 2005-07-18 09:43:35 +0200 (Mon, 18 Jul 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
+
+bugfix for basic_status values
+------------------------------------------------------------------------
+r33 | chy | 2005-06-26 20:10:27 +0200 (Sun, 26 Jun 2005) | 1 line
+Changed paths:
+   A /trunk/watcherinfo.pm
+
+Initial revision
+------------------------------------------------------------------------
+r32 | chy | 2005-06-26 20:05:04 +0200 (Sun, 26 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Publish.pm
+   M /trunk/Subscribe.pm
+
+Bugfix: keep running when receiving unknown event in state initializing
+------------------------------------------------------------------------
+r31 | chy | 2005-06-26 20:04:17 +0200 (Sun, 26 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/webui/ppl.pl
+
+Added option for selecting event package
+------------------------------------------------------------------------
+r30 | chy | 2005-06-26 15:40:52 +0200 (Sun, 26 Jun 2005) | 1 line
+Changed paths:
+   D /trunk/demo
+   M /trunk/doc/index.html
+   A /trunk/webui (from /trunk/demo:28)
+   M /trunk/webui/ppl.pl
+
+renamed demo folder
+------------------------------------------------------------------------
+r29 | chy | 2005-06-25 10:39:38 +0200 (Sat, 25 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
+   M /trunk/README
+
+Update for new release
 ------------------------------------------------------------------------
 r28 | chy | 2005-06-25 10:34:24 +0200 (Sat, 25 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
 
 Changed help output
 ------------------------------------------------------------------------
 r27 | chy | 2005-06-25 10:18:07 +0200 (Sat, 25 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/doc/index.html
 
 licence issue made more clear
 ------------------------------------------------------------------------
 r26 | chy | 2005-06-25 10:16:06 +0200 (Sat, 25 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/demo/ppl.pl
 
 changed default sip proxy
 ------------------------------------------------------------------------
 r25 | chy | 2005-06-21 21:16:35 +0200 (Tue, 21 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
 
 add option for message
 ------------------------------------------------------------------------
 r24 | chy | 2005-06-20 14:02:40 +0200 (Mon, 20 Jun 2005) | 2 lines
+Changed paths:
+   M /trunk/demo/ppl.pl
 
 many cosmetic changes, allow _ in URIs, derive path to pua.pl from pwd
+
 ------------------------------------------------------------------------
 r23 | chy | 2005-06-20 14:00:55 +0200 (Mon, 20 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/pua.pl
 
 fixed handling of udp timeout
 ------------------------------------------------------------------------
 r22 | chy | 2005-06-12 11:11:41 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
 
 new option for SIP message trace
 ------------------------------------------------------------------------
 r21 | chy | 2005-06-12 11:10:55 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/demo/ppl.pl
 
-added support for subscribe, added proper SIP message trace on resulting 
-page
+added support for subscribe, added proper SIP message trace on resulting page
 ------------------------------------------------------------------------
 r20 | chy | 2005-06-12 11:09:52 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Subscribe.pm
 
-Added workaround for pic SER, sends expiry duration of 1 (instead of 0). 
-Fixed notify_once, there were some notification termination reasons not 
-realy considered.
+Added workaround for pic SER, sends expiry duration of 1 (instead of 0). Fixed notify_once, there were some notification termination reasons not realy considered.
 ------------------------------------------------------------------------
 r19 | chy | 2005-06-12 11:06:40 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/doc/wp.css
 
 added styles for tabs
 ------------------------------------------------------------------------
 r18 | chy | 2005-06-12 11:05:44 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Publish.pm
 
 use CRLF also within pidf document
 ------------------------------------------------------------------------
 r17 | chy | 2005-06-12 11:03:23 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/Register.pm
 
 changed contact header so it makes use of sip id, if available
 ------------------------------------------------------------------------
 r16 | chy | 2005-06-12 11:01:45 +0200 (Sun, 12 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/pua.pl
 
 added support of better SIP message trace
 ------------------------------------------------------------------------
 r15 | chy | 2005-06-04 21:19:27 +0200 (Sat, 04 Jun 2005) | 1 line
+Changed paths:
+   M /trunk/demo/ppl.pl
+   M /trunk/doc/wp.css
 
 Added first draft of tab panes for operation specific options
 ------------------------------------------------------------------------
 r14 | chy | 2005-05-29 21:22:37 +0200 (Sun, 29 May 2005) | 1 line
+Changed paths:
+   M /trunk/t/pidf.t
 
 Add test for basic pidf as sent by pals.internet2.edu
 ------------------------------------------------------------------------
 r13 | chy | 2005-05-29 21:21:31 +0200 (Sun, 29 May 2005) | 1 line
+Changed paths:
+   M /trunk/pua.pl
 
 set UDP message size to 64K
 ------------------------------------------------------------------------
 r12 | chy | 2005-05-29 21:20:30 +0200 (Sun, 29 May 2005) | 1 line
+Changed paths:
+   M /trunk/demo/ppl.pl
 
-Added rudimentary register functionality, do many checks to avoid misuse 
-by interpretation of input
+Added rudimentary register functionality, do many checks to avoid misuse by interpretation of input
 ------------------------------------------------------------------------
 r11 | chy | 2005-05-28 09:27:47 +0200 (Sat, 28 May 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
+   M /trunk/Publish.pm
+   M /trunk/Subscribe.pm
+   M /trunk/Transaction.pm
+   M /trunk/doc/index.html
+   M /trunk/pua.pl
+   M /trunk/t/testpua.sh
+   M /trunk/t/testserver.pl
 
-Added option for contact priority, added option for subscribe event 
-package name
+Added option for contact priority, added option for subscribe event package name
 ------------------------------------------------------------------------
 r10 | chy | 2005-05-26 20:53:33 +0200 (Thu, 26 May 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
+   M /trunk/README
 
 still playing around with svn LastChangedRevision attrib
 ------------------------------------------------------------------------
 r9 | chy | 2005-05-26 20:44:12 +0200 (Thu, 26 May 2005) | 1 line
+Changed paths:
+   A /trunk/README
+   A /trunk/demo
+   A /trunk/demo/ppl.pl
+   M /trunk/doc/index.html
 
 added README, and first fragment of ppl.pl
 ------------------------------------------------------------------------
 r8 | chy | 2005-05-26 20:27:18 +0200 (Thu, 26 May 2005) | 1 line
+Changed paths:
+   M /trunk/t/testserver.pl
 
 fixed some tests
 ------------------------------------------------------------------------
 r7 | chy | 2005-03-25 09:27:23 +0100 (Fri, 25 Mar 2005) | 1 line
+Changed paths:
+   M /trunk/Handler.pm
+   M /trunk/Publish.pm
+   M /trunk/Register.pm
+   M /trunk/Subscribe.pm
+   M /trunk/doc/index.html
+   M /trunk/pua.pl
+   M /trunk/t/testpua.sh
+   M /trunk/t/testserver.pl
 
-chaned handlin of incomming SIP messages, now each handler has a chance 
-to decide if it is usefull or not, return 501 on each un-handled 
-incoming message
+chaned handlin of incomming SIP messages, now each handler has a chance to decide if it is usefull or not, return 501 on each un-handled incoming message
 ------------------------------------------------------------------------
 r6 | chy | 2005-03-05 14:08:40 +0100 (Sat, 05 Mar 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
+   M /trunk/doc/index.html
+   M /trunk/t/testserver.pl
 
-removed some of the default options, added instead sanity checks for 
--i, -w, and adapted tc accordingly
+removed some of the default options, added instead sanity checks for -i, -w, and adapted tc accordingly
 ------------------------------------------------------------------------
 r5 | chy | 2005-03-04 20:58:54 +0100 (Fri, 04 Mar 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
+   M /trunk/t/testpua.sh
+   M /trunk/t/testserver.pl
 
-tc for Proxy-Authorization fixed, corrected VERSION, set test output to 
-silent
+tc for Proxy-Authorization fixed, corrected VERSION, set test output to silent
 ------------------------------------------------------------------------
 r4 | chy | 2005-03-04 20:38:34 +0100 (Fri, 04 Mar 2005) | 1 line
+Changed paths:
+   M /trunk/Options.pm
 
 removed date property from options, so rev at least should work
 ------------------------------------------------------------------------
 r3 | chy | 2005-03-04 20:26:25 +0100 (Fri, 04 Mar 2005) | 1 line
+Changed paths:
+   M /trunk/Handler.pm
+   M /trunk/Options.pm
+   M /trunk/Publish.pm
+   M /trunk/Register.pm
+   M /trunk/Subscribe.pm
+   M /trunk/Transaction.pm
+   M /trunk/pidf.pm
+   M /trunk/pua.pl
 
-improved properties to enable svn keyword substitution, so the version 
-in user agent header looks better
+improved properties to enable svn keyword substitution, so the version in user agent header looks better
 ------------------------------------------------------------------------
 r2 | chy | 2005-03-04 20:01:17 +0100 (Fri, 04 Mar 2005) | 1 line
+Changed paths:
+   M /trunk/Handler.pm
+   M /trunk/Options.pm
+   M /trunk/Publish.pm
+   M /trunk/Register.pm
+   M /trunk/Subscribe.pm
+   M /trunk/Transaction.pm
+   M /trunk/doc/index.html
+   M /trunk/pidf.pm
+   M /trunk/pua.pl
 
 changed properties to enable svn keyword substitution
 ------------------------------------------------------------------------
 r1 | chy | 2005-03-04 19:13:27 +0100 (Fri, 04 Mar 2005) | 1 line
+Changed paths:
+   A /trunk
+   A /trunk/Authen
+   A /trunk/Authen/DigestMD5.pm
+   A /trunk/Handler.pm
+   A /trunk/Log
+   A /trunk/Log/Easy.pm
+   A /trunk/Options.pm
+   A /trunk/Publish.pm
+   A /trunk/Register.pm
+   A /trunk/Subscribe.pm
+   A /trunk/Transaction.pm
+   A /trunk/doc
+   A /trunk/doc/bg.jpg
+   A /trunk/doc/index.html
+   A /trunk/doc/wp.css
+   A /trunk/pidf.pm
+   A /trunk/pua.pl
+   A /trunk/t
+   A /trunk/t/pidf.t
+   A /trunk/t/testexec1.sh
+   A /trunk/t/testexec3.sh
+   A /trunk/t/testexec4.sh
+   A /trunk/t/testpua.sh
+   A /trunk/t/testserver.pl
 
 initial revision
 ------------------------------------------------------------------------
-
