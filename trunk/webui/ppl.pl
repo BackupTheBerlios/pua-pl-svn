@@ -93,16 +93,16 @@ unless ($proxy) {
 	# backticks!
 	my $out = `perl -I ${PATH_TO_LIBS} -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd`;
 
-	# write cmd to logfile
-	# my $date = `date`;
-	# chomp $date;
-	# my $rho = remote_host();
-	# `echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
-
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
 
         # write result to logfile
-        # `echo $res >> ${PATH_TO_PROG}/logfile 2>&1`;
+        if (open LOG, ">> ${PATH_TO_PROG}/logfile") {
+            my $date = gmtime;
+            my $rho = remote_host();
+            print LOG "$date, $rho: $cmd1\n";
+            print LOG "$res";
+            close LOG;
+        }
 
 	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
