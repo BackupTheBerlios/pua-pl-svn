@@ -177,7 +177,7 @@ Sometimes you can only subscribe when you are registered. Then both
   pua.pl -r -s -i=ron@provider.net -x=provider.net -w=sip:uli@t-sip.de<p>
 </code></div>
 
-When the server sends some information about Uli's presence, pua.pl
+Whenever the server sends some information about Uli's presence, pua.pl
 prints it on the console. For cases where this is not sufficient, it is
 possible to pass a command to pua.pl, which is then executed. See 
 <code>--exec-notify</code> below.<p>
@@ -191,8 +191,17 @@ port 5060, i.e.<p>
   pua.pl -s -i=ron@provider.net -x=provider.net -w=sip:uli@t-sip.de -lp 5059<p>
 </code></div>
 
-runs it on local port 5059 (instead of 5060, which is the default).
+runs it on local port 5059 (instead of 5060, which is the default).<p>
 
+It is possible to subscribe to different kind of information, given
+that the server supports this. On default, pua.pl subscribes to presence
+information. This can be overwritten by means of command line switch 
+<code>--event-package=<i>pck</i></code>. By setting <code><i>pck</i></code> 
+to 'presence', the server sends notifications about whether the person
+(with the sip-id specified with -w) is online or not. By setting
+<code><i>pck</i></code> to 'presence.winfo', you get information about 
+who subscribes to the person's presence. Also supported is 'presence.winfo.winfo',
+in order to watch the watchers watch. 
 
 
 <h3><a name="p">Publish</a></h3>

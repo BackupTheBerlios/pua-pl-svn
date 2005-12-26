@@ -451,6 +451,9 @@ Subscribe options, use in combination with -s:
     would like to know when she is online, and how to contact.
     The uri is usually something like 'sip:moby@sea.com'.
 
+  -ep, --event-package=pckg: To specify which kind of information 
+    should be subscribed on. Supported values for pckg are: 
+    presence, presence.winfo, presence.winfo.winfo
 
 Register options, in combination with -r:
 
