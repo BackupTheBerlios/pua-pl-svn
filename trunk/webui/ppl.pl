@@ -44,13 +44,20 @@ unless ($proxy) {
 	my $subscribe = $query->param('subscribe');
 
         if (defined $register and $register eq 'ON') {
-	    $opts = '-r -ro -re 60 ';
+	    $opts = '-r --register-once ';
+            if ($query->param('regexp') ne '') {
+                $opts .= '--register-exp='.$query->param('regexp').' ';
+            }
  	    if ($query->param('registrar') ne '') {
 	        $opts .= '--registrar='.$query->param('registrar').' ';
 	    }
         } 
 	if (defined $publish and $publish eq 'ON') {
-	    $opts .= '-p -po -pe 60 ';
+	    $opts .= '-p --publish-once ';
+
+            if ($query->param('pubexp') ne '') {
+                $opts .= '--publish-exp='.$query->param('pubexp').' ';
+            }
  	    if ($query->param('status') ne '') {
 	        $opts .= '--status='.$query->param('status').' ';
 	    }
@@ -90,12 +97,12 @@ unless ($proxy) {
 	# my $date = `date`;
 	# chomp $date;
 	# my $rho = remote_host();
-	#`echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
+	# `echo $date, $rho: $cmd1 >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
 
         # write result to logfile
-        `echo "$res" >> ${PATH_TO_PROG}/logfile 2>&1`;
+        # `echo $res >> ${PATH_TO_PROG}/logfile 2>&1`;
 
 	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
@@ -250,7 +257,7 @@ sub check_param {
     }
 
     my $co = $query->param('contact');
-    if ($co ne '' && !($co =~ /^([-a-z@._0-9:])+$/i)) {
+    if ($co ne '' && !($co =~ /^([-+a-z@._0-9:])+$/i)) {
 	return 'Invalid character in contact URI.';
     }
 
@@ -269,6 +276,17 @@ sub check_param {
 	return 'Invalid value for event package, permitted are: presence, '.
 	  'presence.winfo and presence.winfo.winfo.';
     }
+
+    my $re = $query->param('regexp');
+    if ($re ne '' && !($re =~ /^\d+$/)) {
+        return 'Expiry duration for Register is not a number';
+    }
+
+    my $pe = $query->param('pubexp');
+    if ($pe ne '' && !($pe =~ /^\d+$/)) {
+        return 'Expiry duration for Publish is not a number';
+    }
+
 
     return '';
 } 
@@ -460,7 +478,19 @@ sub printRegisterForm {
     print 'the register request will be sent to a server name ';
     print 'constructed from your address (as specified with SIP id '.
           'above). E.g. for a given SIP id sip:myname@domain.org, '.
-          'the registrar will be guessed as sip:domain.org.<p>'.
+          'the registrar will be guessed as sip:domain.org.<p></td></tr>';
+
+    # expiry duration
+    print '<tr><td>Expires after<br><input type=\'text\' name=\'regexp\' ';
+    my $exp = $query->param('regexp');
+    if (defined $exp) {
+        print 'value=\''.$exp.'\'';
+    } else {
+        print 'value=\'60\'';
+    }
+    print ' /></td><td>Timeout in seconds how long the registration '.
+          'is valid. After expiry, the Register '.
+          'operation needs to be performed again.'.
           '</td></tr></table></td></tr></table>";';
 }
 
@@ -545,7 +575,10 @@ sub printPublishForm {
     print ' /></td><td>The contact address to be published. Can be any address, '.
           'like an email or telephone number. The addres should include the '.
           'scheme, e.g. tel:+09012345678, or mailto:someone@example.com are '.
-          'valid.<p></td></tr><tr><td>Basic presence status<br><select '.
+          'valid.<p></td></tr>';
+
+    # basic presence status
+    print '<tr><td>Basic presence status<br><select '.
           'name=\'status\' size=1><option';
 
     my $stat = $query->param('stat');
@@ -559,8 +592,26 @@ sub printPublishForm {
         print ' selected'; 
     }
 
+    print '>closed</option></select></td><td>'.
+          'This is to specify the status of the '.
+          'contact URI, \'open\' means, the person'.
+          ' behind the contact URI is able and'.
+          ' willing to accept communication this way.<p></td></tr>';
+
+    # expiry duration
+    print '<tr><td>Expires after<br><input type=\'text\' name=\'pubexp\' ';
+    my $exp = $query->param('pubexp');
+    if (defined $exp) {
+        print 'value=\''.$exp.'\'';
+    } else {
+        print 'value=\'60\'';
+    }
+    print ' /></td><td>Timeout in seconds how long the published '.
+          'contact address is valid. After expiry, the Publish '.
+          'operation needs to be performed again.';
+
 print <<'EOF'
->closed</option></select></td><td>This is to specify the status of the contact URI, 'open' means, it the person behind the contact URI is able and willingly to accept communication this way.<p></td></tr></table></td></tr></table>";
+<p></td></tr></table></td></tr></table>";
 
 var ts = new tabstrip();
 var t1 = new tab("Register Options",pane1);
@@ -594,6 +645,8 @@ print <<'EOH'
 
 EOH
 }
+# for breitnetz: <link rel="stylesheet" type="text/css" href="../doc/wp.css" />
+
 
 #
 # some javascript functions to allow tabs for the various 
