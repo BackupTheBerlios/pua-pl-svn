@@ -169,6 +169,7 @@ sub new {
     $self->{subscribe_exp} = $SIP_SUBSCRIBE_EXPIRES;
     $self->{publish_exp}   = $SIP_PUBLISH_EXPIRES;
     $self->{register_exp}  = $SIP_REGISTER_EXPIRES;
+    $self->{msg_exp}       = '';
     $self->{my_host}       = $SIP_MY_HOST;
     $self->{registrar}     = $SIP_REGISTRAR;
     $self->{domain}        = $SIP_DOMAIN;
@@ -189,9 +190,10 @@ sub new {
                                    # have to register
     $self->{publish}   = 0;        # set in case we should publish our presence
     $self->{subscribe} = 0;        # set when subscription should be made
-    $self->{message}   = 0;        # not used, but maybe one day
+    $self->{msg_receive} = 0;      # waiting for incoming MESSAGEs
+    $self->{message}   = '';       # message to be send out with MESSAGE
 
-    $self->{event_package} = 'presence';  # for subscription to watcher info
+    $self->{event_package} = 'presence';  # for subscription to presence/winfo
 
     $self->{register_once}  = 0; # terminate after first REGISTER
     $self->{publish_once}   = 0; # terminate after first PUBLISH
@@ -202,6 +204,8 @@ sub new {
     $self->{password}  = ''; # for digest authentification
 
     $self->{login}     = ''; # local login name
+
+    $self->{msg_to}    = ''; # to who send the message
 
     $self->{testing}   = 0;  # test mode
     $self->{trace}     = 0;  # trace SIP message
@@ -215,7 +219,7 @@ sub new {
 			    'subscribe|s'        => \$self->{subscribe},
 			    'event-package|ep=s' => \$self->{event_package},
 			    'publish|p'          => \$self->{publish},
-			    'message|m'          => \$self->{message},
+			    'message|m=s'        => \$self->{message},
 			    'my-sip-id|my-id|i=s'=> \$self->{my_id},
 			    'my-name=s'          => \$self->{my_name},
 			    'local-port|lp=i'    => \$self->{local_port},
@@ -233,6 +237,7 @@ sub new {
 			    'subscribe-exp|se=i' => \$self->{subscribe_exp},
 			    'publish-exp|pe=i'   => \$self->{publish_exp},
 			    'register-exp|re=i'  => \$self->{register_exp},
+                            'message-exp|me=i'   => \$self->{msg_exp},
 			    'publish-once|po'    => \$self->{publish_once},
 			    'register-once|ro'   => \$self->{register_once},
                             'notify-once|no'     => \$self->{notify_once},
@@ -247,6 +252,8 @@ sub new {
 			    'password|pw=s'      => \$self->{password},
 			    'login=s'            => \$self->{login},
 			    'trace'              => \$self->{trace},
+                            'msg-to-id|mt=s'     => \$self->{msg_to},
+                            'msg-receive|mr'     => \$self->{msg_receive},
 			    'testing'            => \$self->{testing}
 			   );
 
@@ -258,9 +265,9 @@ sub new {
     if ($self->{options}) { $self->usage_options(); }
 
     unless ($self->{subscribe} || $self->{publish} 
-            || $self->{register}) {
+            || $self->{register} || $self->{message}) {
         $self->usage_short('At least one of the options register, subscribe, '.
-		     'publish is required.');
+		     'publish or message is required.');
     }
 
     if ($self->{my_id} =~ /^sips:/) {
@@ -354,6 +361,20 @@ sub new {
 	}
     }
 
+    # message relevant opts
+    if ($self->{message}) {
+        if ($self->{msg_to} eq '') {
+            $self->usage_short("Please specify sip-id of the person to send the message, ".
+                               'with --msg-to-id (-mt) e.g. -mt sip:jo@iptel.org');
+        }
+        my $muri = new URI($self->{msg_to});
+        unless ($muri->scheme) {
+            $self->usage_short("Expecting scheme for uri specified with switch ".
+                               "--msg-to-id (-mt), like 'sip:'");
+        }
+    }
+
+
     return $self;
 }
 
@@ -381,7 +402,8 @@ sub usage_long {
 
   print <<'EOU';
 A simple command-line presence user agent. Partly conforms to RFC 3261 (SIP), 
-3903 (PUBLISH), 3265 & 3856 (NOTIFY, SUBSCRIBE), 3863 (pidf).
+3903 (PUBLISH), 3265 & 3856 (NOTIFY, SUBSCRIBE), 3863 (pidf), 3857 & 3858 
+(watcher info).
 
 Able to subscribe to other's presence, receive notifications and print
 them, publish your own presence and register.

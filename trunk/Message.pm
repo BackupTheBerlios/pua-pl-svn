@@ -1,7 +1,7 @@
 package Message;
 
 # handling of the MESSAGE SIP messages and responses
-# tries to conform to RFC 33428
+# conform to RFC 3428, only supports text/plain
 #
 # part of pua.pl
 # a simple presence user agent, 
@@ -35,7 +35,7 @@ sub new {
     $self->{log}     = shift;  # reference to the log object
     $self->{options} = shift;  # reference to the options object
 
-    $self->{state} = 'mess_initializing'; 
+    $self->{state} = 'msg_initializing'; 
 
     bless($self);
     return $self;
@@ -74,8 +74,7 @@ sub get_msg {
     # set some extra header lines, MESSAGE specific
     if ($expires ne '') {
         # it may expire, add an extra header line for the date
-        my $date = 'date'; # FIXME
-        chomp $date;
+        my $date = $self->{transaction}->get_date(); 
         $headers .= 'Date: '. $date . $CRLF;
         $headers .= 'Expires: '.$expires.$CRLF;
     }
@@ -102,14 +101,14 @@ sub get_msg {
 # transitions, legend:- means, the event is ignored, o means it is handled
 # but does not cause a state transition, x means it terminates the state
 # machine, and with it the program. For MESSAGE it is specific that we 
-# can go into state mess_receiving without any message sent previously.
+# can go into state msg_receiving without any message sent previously.
 # This depends on if there is a outgoing MESSAGE given by the user or not. 
 #
-# state \     event|  started  |    msgsent   |   ended   |msgfailed |
-#------------------+-----------+--------------+-----------+----------+
-# mess_initializing|o/mess_rec.|mess_rec./ign.|     x     | mess_ign.|
-# mess_receiving   |     -     |       -      |     x     | ign./ o  |
-# mess_ignoring    |     x     |       x      |     x     |     x    |
+# state \    event|  started  |    msgsent  |   ended   |msgfailed |
+#-----------------+-----------+-------------+-----------+----------+
+# msg_initializing|o/msg_rec. |msg_rec./ign.|     x     | msg_ign. |
+# msg_receiving   |     -     |       -     |     x     | ign./ o  |
+# msg_ignoring    |     x     |       x     |     x     |     x    |
 #
 # returns 2 values: (1) a suggested main state, return value 'x' means, 
 # we're done so far and the main state machine may exit, and (2) a transaction
@@ -123,17 +122,16 @@ sub control {
     my $options = $self->{options};
     my $state = $self->{state};
 
-    unless ($options->{msg_send} || $options->{msg_receive}) 
+    unless ($options->{message} || $options->{msg_receive}) 
     { 
         return 'x'; # exit from me out
     }
 
     $self->{log}->write(DEBUG, "message: in state $state got event $event");
 
-    if ($state eq 'mess_initializing') {
+    if ($state eq 'msg_initializing') {
         if ($event eq 'started') {
-
-	    my $msg = $self->get_msg($options->{msg_doc}, 
+	    my $msg = $self->get_msg($options->{message}, 
                                      $options->{msg_exp});
 
 	    $self->{log}->write(DEBUG, "message: send initial message "
@@ -146,12 +144,12 @@ sub control {
 
 	    $self->handle_message(@_);
 
-	    if ($options->{msg_send_once}) {
-		$ret = 'x'; # no update, no expiry, no unpublish
-		$self->change_state('mess_ignoring');
+	    if ($options->{msg_receive}) {
+                $self->change_state('msg_receiving');
+                $ret = 'running';
 	    } else {
-		$self->change_state('mess_receiving');
-		$ret = 'running';
+                $ret = 'x'; # no update, no expiry, no unpublish
+                $self->change_state('msg_ignoring');
 	    }
 
 	} elsif ($event eq 'msgfailed') {
@@ -162,7 +160,7 @@ sub control {
 		$ret = 'running';
 		$transaction = $t;	
 	    } else {
-		$self->change_state('mess_ignoring');
+		$self->change_state('msg_ignoring');
 		$ret = 'x';
 	    }
 	} elsif ($event eq 'ended') {
@@ -171,7 +169,7 @@ sub control {
 	    # any other event, not for me
 	    $ret = 'running';
 	}
-    } elsif ($state eq 'mess_receiving') {
+    } elsif ($state eq 'msg_receiving') {
         if ($event eq 'msgsent') {
             if ($options->{msg_receive}) {
                 $self->handle_message(@_);
@@ -179,12 +177,12 @@ sub control {
             } else {
                 # finished,as there is nothing more to wait for
 		$ret = 'x'; 
-		$self->change_state('mess_ignoring');
+		$self->change_state('msg_ignoring');
             }
         } elsif ($event eq 'ended') {
 
-	    # user wants to abort program, remove published presence
-	    $self->change_state('mess_ignoring'); # don't care about the result
+	    # user wants to abort program
+	    $self->change_state('msg_ignoring'); # don't care about the result
 	    $ret = 'x'; 
 
 	} elsif ($event eq 'msgfailed') {
@@ -197,7 +195,7 @@ sub control {
 		# MESSAGE didn't work
 		$self->{log}->write(WARN, "$SIP_USER_AGENT: MESSAGE failed, server sent error '"
 				    .(split("\n", $header))[0] ."'\n");
-		$self->change_state('mess_ignoring');
+		$self->change_state('msg_ignoring');
 		$ret = 'x';
 	    }
 
@@ -222,18 +220,21 @@ sub handle_message {
 
 # 
 # called when a SIP message is received. The function checks if it is
-# publish relevant, and if yes, it returns the name of the internal
-# message to be posted, like 'pubfailed', or undef in case of not relevant
+# relevant for this module, and if yes, it returns the name of the internal
+# message to be posted, like 'msgfailed', or undef in case of not relevant
 
 sub check_message {
     my $self = shift;
-    my ($header, $content) = @_;
+    my ($header, $content, $human_addr) = @_;
     my $ret;
-    my $h0;
+    my $ok;
+    my $return_headers = '';
+    my ($l, $l0);
 
     # get the cseq line, for the method name    
-    foreach $h0 (split("\n", $header)) {
-        if ($h0 =~ /^CSeq\s*:\s*\d+\s+MESSAGE/i) {        
+    foreach $l (split("\n", $header)) {
+        unless (defined $l0) { $l0 = $l; } # keep the first one
+        if ($l =~ /^CSeq\s*:\s*\d+\s+MESSAGE/i) {        
             my $code = $self->get_message_code($header);
             if ($code >= 200 && $code <= 299) {
                 $ret = 'msgsent';
@@ -242,8 +243,37 @@ sub check_message {
             }
             last;
         }
+
+        # get the header lines that will be required for the
+        # sip 200 OK message responds
+    
+        if ($l =~ /^Via:\s*SIP\/2\.0/i) {
+            if (defined $human_addr) {
+                $return_headers .= $l.';received='.$human_addr . $CRLF;
+            } else {
+                $return_headers .= $l . $CRLF;
+            }
+        } elsif ($l =~ /^CSeq\s*:\s*(\d)+\s+MESSAGE/i) {
+            $return_headers .= $l . $CRLF;
+        } elsif ($l =~ /^From\s*:/i) {
+            $return_headers .= $l . $CRLF;
+        } elsif ($l =~ /^To\s*:/i) {
+            $return_headers .= $l . $CRLF;
+        } elsif ($l =~ /^Call-ID\s*:/i) {
+            $return_headers .= $l . $CRLF;
+        }
+
     } 
-    return $ret;
+
+    # send a ok reply to the server, if it was a incoming msg
+
+    if ($l0 =~ /^MESSAGE/) {
+        $ok = $self->get_ok_reply_msg($return_headers);
+        $log->write(SPEW, "server: reply with $ok");
+        $ret = 'msgreceived';
+    }
+
+    return ($ret, $ok);
 }
 
 

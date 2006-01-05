@@ -19,6 +19,8 @@ use strict;
 
 use English;            # access to the perl variables with readable names
 
+use POSIX qw(strftime); # convert date info to string
+
 use lib qw(.);          # the libs below are local, so allow to load them
 use Log::Easy qw(:all); # for logging
 use Options;            # to handle default options and the command line
@@ -102,14 +104,17 @@ sub get_message {
 
     # the To: header
     $message .= 'To: ';
+    unless (exists $self->{to}) {
+        die("$SIP_USER_AGENT: Internal problem with To: header");
+    }
+
     if (exists $self->{to_dn} and $self->{to_dn} ne '') {
         $message .= '"' . $self->{to_dn} . '" ';
+        $message .= '<' . $self->{to} . '>';
+    } else {
+        # have no display name
+        $message .= $self->{to};
     }
-    
-    unless (exists $self->{to}) {
-	die("$SIP_USER_AGENT: Internal problem with To: header");
-    }
-    $message .= '<' . $self->{to} . '>';
     # check if we are in a dialog
     if (exists $self->{to_tag}) {
         # indeed 
@@ -119,14 +124,17 @@ sub get_message {
 
     # the From header
     $message .= 'From: ';
-    if (exists $self->{from_dn} && $self->{from_dn} ne '') {
-        $message .= '"' . $self->{from_dn} . '" ';
+    unless (exists $self->{from}) {
+        die("$SIP_USER_AGENT: Internal problem with From: header");
     }
 
-    unless (exists $self->{from}) {
-	die("$SIP_USER_AGENT: Internal problem with From: header");
+    if (exists $self->{from_dn} && $self->{from_dn} ne '') {
+        $message .= '"' . $self->{from_dn} . '" ';
+        $message .= '<' . $self->{from} . '>';
+    } else {
+        # have no dislay name
+        $message .= $self->{from};
     }
-    $message .= '<' . $self->{from} . '>';
     $message .= $self->get_from_tag();
     $message .= CRLF;
 
@@ -313,6 +321,20 @@ sub get_call_id {
     }
     return $self->{call_id};
 }
+
+
+#
+# create a correctly formated date, as used in the header Date
+# RFC822-conformant.
+# usage: get_date(time) returns e.g. Sat, 13 Nov 2010 23:29:00 GMT
+
+sub get_date {
+    my $self = shift;
+
+    my $now_string = strftime "%a, %d %b %Y %H:%M:%S %z", localtime;
+    return $now_string;
+}
+
 
 #
 # return and keep the command sequence number. Incremented by

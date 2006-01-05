@@ -95,8 +95,9 @@ sub get_message_code {
 	    $log->write(WARN, $SIP_USER_AGENT.": SIP server returned $code, $status"); 
             return $code;
 	}
-    } elsif ($headers[0] =~ /^NOTIFY\s+(.*)\s+SIP\/2\.0$/) {
-        # notify message
+    } elsif ($headers[0] =~ /^NOTIFY\s+(.*)\s+SIP\/2\.0$/ 
+             || $headers[0] =~ /^MESSAGE\s+(.*)\s+SIP\/2\.0$/) {
+        # incoming messages, which are not responses
         $code = 200; # ok FIXME
     } else {
         # problem with parsing
@@ -104,6 +105,25 @@ sub get_message_code {
     }
 
     return $code;
+}
+
+#
+# construct a ok 200 message in responds to a NOTIFY or MESSAGE.
+# The Via headers, the From, To Call-ID and CSeq headers are taken
+# from the incoming message, and should be passed with the headers 
+# param
+
+sub get_ok_reply_msg {
+    my $self = shift @_;
+    my ($headers) = $_[0];
+
+    my $msg =
+      'SIP/2.0 200 OK'.$CRLF.
+      $headers.
+      'User-Agent: '.$SIP_USER_AGENT.$CRLF.
+      'Content-Length: 0'.$CRLF.$CRLF;
+
+    return $msg;
 }
 
 

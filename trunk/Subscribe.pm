@@ -205,11 +205,8 @@ sub control {
 	    # somebody we are watching. The ok reply to the server is
 	    # already out. Parse the info and process it
 
-	    my $status = $self->notify_check($header);
-
-            if ($status eq 'ok') {
-
-	        # all headers are ok, parse the body, the message content
+            if (length($content)) {
+	        # parse the body, the message content
                 if ($self->{package} eq 'presence') {
 
                     # body should be pidf document
@@ -238,7 +235,7 @@ sub control {
                     # subscription to watcher info, body is watcherinfo.xml format
                     watchinfo_parse($content, 
                                     $log, 
-                                    sub {           # callback #1
+                                    sub {   # callback #1
                                         my $self = $_[1];
                                         my $options = $self->{options};
                                         if ($options->{exec_notify} ne '') {
@@ -251,12 +248,17 @@ sub control {
                                         $self->{log}->write(WARN, 
                                                             $SIP_USER_AGENT.': '.$_[0]);
                                     },
-                                    $self,          # arg 1
-                                    undef, # callback #2
-                                    $self);         # arg 2
+                                    $self,  # arg 1
+                                    undef,  # callback #2
+                                    $self); # arg 2
 
-                    $self->{log}->write(WARN, "watcherinfo: $content");
+                    $self->{log}->write(WARN, "$SIP_USER_AGENT: watcherinfo: $content");
                 }
+            }
+
+            my ($status, $delay) = $self->notify_check($header);
+  
+            if ($status eq 'ok') {
 
 		if ($options->{notify_once}) {
 		    # ready
@@ -264,26 +266,14 @@ sub control {
 		    $self->change_state('subs_ignoring');
                     $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
 		} else {
-		    $ret = 'running';
 		    # stay in this state, wait for next
+                    $ret = 'running';
+                    # check if server has set expiry of subscription
+                    if (defined $delay) {
+                        # overwrite previously set time out
+                        $kernel->delay('subexpired', $delay - 3);
+                    }
 		}	
-
-	    } elsif ($status =~ /^\d+$/) {
-
-  	        # it was a notification that the subscription temporary failed
-                # including a "retry-after" hint, so start a timer, then retry
-
-		if ($options->{notify_once}) {
-		    # ready
-		    $ret = 'x';
-                    $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
-		    $self->change_state('subs_ignoring');
-		} else {
-		    $self->change_state('subs_waiting');
-		    $log->write(DEBUG, "subscribe: delay subscribe for $status sec");
-		    $kernel->delay('subdelayed', $status);
-		    $ret = 'running';
-		}
 
 	    } elsif ($status eq 're-subscribe') {
 
@@ -293,10 +283,20 @@ sub control {
                     $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
 		    $self->change_state('subs_ignoring');
 		} else {
-		    # immediately try again to subscribe
-		    $self->create_subscribe($kernel);
-		    $transaction = $self->{transaction};
-		    $ret = 'running';
+                    if (defined $delay and $delay > 0) {
+                        # it was a notification that the subscription temporary failed
+                        # including a "retry-after" hint, so start a timer, then retry
+
+                        $self->change_state('subs_waiting');
+                        $log->write(DEBUG, "subscribe: delay subscribe for $delay sec");
+                        $kernel->delay('subdelayed', $delay);
+                        $ret = 'running';
+                    } else {
+ 	 	        # immediately try again to subscribe
+		        $self->create_subscribe($kernel);
+		        $transaction = $self->{transaction};
+		        $ret = 'running';
+                    }
 		}
 	    } else {
 
@@ -577,22 +577,27 @@ sub clean_tuples {
 # parse the header of the received NOTIFY message and return one of
 # the following, depending on the header 'Subscription-State'.
 # 'ok'           - in case it is a plain presence notification with 
-#                  a  pidf body
-# 're-subscribe' - in case the server wants us to sbuscribe again
-# <nnnn>         - in case it notifies about the pa wants us to retry 
-#                  subscription after nnnn seconds
+#                  a  pidf body, extra parameter timeout is set in
+#                  case a expiry parameter is found
+# 're-subscribe' - in case the server wants us to subscribe again.
+#                  Extra parameter nnnn is set in case the pa wants
+#                  us to retry subscription after nnnn second
 # <any other>    - all other return values are a subscription failure 
 #                  reason
 sub notify_check {
     my $self = shift;
     my ($headers) = $_[0];
     my ($h);
+    my ($ret, $delay);
 
     foreach $h (split("\n", $headers)) {
-  	if ($h =~ /Subscription-State:\s*terminated\s*;.*retry-after\s*=\s*(\d+)/i) {
+        if ($h =~ /Subscription-State:\s*active\s*;.*expires\s*=\s*(\d+)/i) {
+            return ('ok', $1);
+  	} 
+        if ($h =~ /Subscription-State:\s*terminated\s*;.*retry-after\s*=\s*(\d+)/i) {
             # subscription terminated, retry-after param found
  	    $log->write(DEBUG, "notify: subscription retry-after $1");
-	    return $1;
+	    return ('re-subscribe', $1);
 	} 
 	if ($h =~ /Subscription-State:\s*terminated\s*;.*reason\s*=\s*(\w+)/i) {
 	    # terminated, and a reason was specified, so parse this
@@ -601,11 +606,11 @@ sub notify_check {
 
 	    if ($r =~ /^deactivated/i || $r =~ /^timeout/i) {
 	        # immediately try again
-		return 're-subscribe'; 
+		return ('re-subscribe', 0); 
 	    } elsif ($r =~ /^probation/i || $r =~ /^giveup/i) {
 		# we checked already for the retry-after param, and it was 
 		# not there, so we retry after, say 60 sec
-		return 60;
+		return ('re-subscribe', 60);
 	    } else {
 		# all else is fatal
 		return $r;
@@ -663,24 +668,6 @@ sub run_exec {
 	}
 	close EXEC;
     }
-}
-
-
-#
-# construct a ok 200 message in responds to the NOTIFY
-# the Via headers, the From, To Call-ID and CSeq headers are taken
-# from the NOTIFY, and should be passed with the headers param
-
-sub get_notify_ok_msg {
-    my ($headers) = $_[0];
-
-    my $msg =
-      'SIP/2.0 200 OK'.$CRLF.
-      $headers.
-      'User-Agent: '.$SIP_USER_AGENT.$CRLF.
-      'Content-Length: 0'.$CRLF.$CRLF;
-
-    return $msg;
 }
 
 
@@ -757,7 +744,7 @@ sub check_message {
     # send a ok reply to the server, if it was a notify
     
     if ($l0 =~ /^NOTIFY/) {    
-        $ok = get_notify_ok_msg($return_headers);
+        $ok = $self->get_ok_reply_msg($return_headers);
 	$log->write(SPEW, "server: reply with $ok");
         $ret = 'notified';
     }

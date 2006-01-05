@@ -47,6 +47,7 @@ my $options = new Options($log);
 use Publish;   # handler for PUBLISH messages
 use Subscribe; # handler for SUBSCRIBE messages
 use Register;  # handler for REGISTER messages
+use Message;   # handler for MESSAGE messages
 
 my @handlers ; # a list of Handler.pm derived objects, like Publish...
 
@@ -131,10 +132,12 @@ sub control {
 	    my $publ = new Publish($log, $options);
 	    my $subs = new Subscribe($log, $options, $options->{event_package});
 	    my $reg  = new Register($log, $options);
+            my $msg  = new Message($log, $options);
 
 	    push @handlers, $reg;
 	    push @handlers, $publ;
 	    push @handlers, $subs;
+            push @handlers, $msg;
 
 	    sip_wait_message($kernel, $heap); # start listening
 
@@ -291,7 +294,7 @@ sub sip_got_message {
     if (defined $content) {
         $log->write(SPEW, "sip_got_message: got content '$content'");
     } else {
-        $log->write(SPEW, "sip_got_messagee: got no content");
+        $log->write(SPEW, "sip_got_message: got no content");
     }
 
     # let the handlers deal with the message, return value is a string which will
@@ -559,7 +562,7 @@ sub append_input {
 	        # previous header line, so append it (below) without \n
 	        $input = ' '.$1; # and with only 1 whitespace
 	    } else {
-	        $headers .= "\n";
+	        $headers .= "\n"; 
 	    }
 	}
 
@@ -575,11 +578,14 @@ sub append_input {
 	    # finished with headers
 	    # inform main session, in case there is no content
 	    if ($heap->{content_len} == 0) {
-	        $kernel->post( pua => sip_got_message => $headers);
-	    } 
-
-	    # miss use $heap->{content} a bit
-	    $heap->{'content'} = '-1';
+                if ($headers) {
+    	            $kernel->post( pua => sip_got_message => $headers);
+                    $heap->{headers} = ''; # don't send it again
+                } 
+	    } else {
+	        # miss use $heap->{content} a bit
+	        $heap->{'content'} = -1;
+            }
 	    
 	} else {
 	    # append to what we have so far
@@ -589,7 +595,7 @@ sub append_input {
 
     } else {
 
-        if ($heap->{'content'} eq '-1') { 
+        if ($heap->{'content'} eq -1) { 
 	    $heap->{'content'} = '';
 	}
 
@@ -600,10 +606,13 @@ sub append_input {
 	# FIXME: what if delimiter is only \n ?
 	$heap->{content_len} -= length($input) + length($CRLF);
 	if ($heap->{content_len} <= 0) {
-	    # finished, inform session and close this
-	    $kernel->post('pua' => sip_got_message 
-			        => $heap->{headers}
-                                => $heap->{content}); 
+            if ($headers) {
+  	        # finished, inform session and close this
+	        $kernel->post('pua' => sip_got_message 
+		  	            => $heap->{headers}
+                                    => $heap->{content}); 
+                $heap->{headers} = '';
+            }
 	}
     }
 } # end append_input
@@ -661,19 +670,22 @@ POE::Session->create(
     # have all in one place
 
     inline_states => {
-        started    => sub { control('started',    @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-        registered => sub { control('registered', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-        subscribed => sub { control('subscribed', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-        published  => sub { control('published',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-        ended      => sub { control('ended',      @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-        notified   => sub { control('notified',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	subdelayed => sub { control('subdelayed', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	subexpired => sub { control('subexpired', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	pubexpired => sub { control('pubexpired', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	regexpired => sub { control('regexpired', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	regfailed  => sub { control('regfailed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	subfailed  => sub { control('subfailed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
-	pubfailed  => sub { control('pubfailed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        started     => sub { control('started',     @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        registered  => sub { control('registered',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        subscribed  => sub { control('subscribed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        published   => sub { control('published',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        ended       => sub { control('ended',       @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        notified    => sub { control('notified',    @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	subdelayed  => sub { control('subdelayed',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	subexpired  => sub { control('subexpired',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	pubexpired  => sub { control('pubexpired',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	regexpired  => sub { control('regexpired',  @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	regfailed   => sub { control('regfailed',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	subfailed   => sub { control('subfailed',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+	pubfailed   => sub { control('pubfailed',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        msgsent     => sub { control('msgsent',     @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        msgfailed   => sub { control('msgfailed',   @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
+        msgreceived => sub { control('msgreceived', @_[KERNEL, HEAP, SESSION, ARG0, ARG1]); },
 
         get_datagram     => \&udp_read, # receiving data via udp
 	send_udp_message => \&udp_send, # sending data via udp
