@@ -91,6 +91,17 @@ WWW-Authenticate: Digest realm="iptel.org", nonce="41a27b3b6184801b57dba727f7380
 ';
 
 
+my $msg_fail_answer = 'SIP/2.0 423 strike
+Via: SIP/2.0/UDP garbo;branch=z9hG4bK199331109232002@garbo;received=192.168.123.2
+From: <sip:conny@192.168.123.2>;tag=1109232002
+Call-ID: 0.989628284328745@garbo
+Content-Length: 0
+To: <sip:conny@192.168.123.2>;tag=SCt-0-1109232002.13-192.168.123.2~case303reg
+Contact: <sip:sc@192.168.123.2:5062;transport=UDP>
+CSeq: 1 MESSAGE
+WWW-Authenticate: Digest realm="iptel.org", nonce="41a27b3b6184801b57dba727f73804c29f91f1b3"                                                                    
+';
+
 
 
 
@@ -108,16 +119,18 @@ sub _start {
 my $answer = $subs_fail_answer;
 
 # not quite sophisticated method ... the test beats for the individual methods
-my @offsets = (    # general_test
-	       33, # init_publish_tests
-	       45, # init_subscribe_tests
-	       55, # subscribe_tests 
-	       66, # publish_tests
-	       77, # init_register_tests
-	       81, # register_auth_tests 
-	       90, # register_tests
-	       92, # notify_tests
-	       100
+my @offsets = (     # general_test
+	       44,  # init_publish_tests
+	       56,  # init_subscribe_tests
+	       66,  # subscribe_tests 
+	       77,  # publish_tests
+	       88,  # init_register_tests
+	       92,  # register_auth_tests 
+	       101, # register_tests
+	       103, # notify_tests
+               113, # subscription_state_tests
+	       122, # init_message_tests
+               125
 	      );
 
 #
@@ -181,6 +194,16 @@ sub continue {
             $heap->{'int_cnt'} = 0; 
 	}
         notify_tests(@_); 
+    } elsif ($heap->{'beat_cnt'} < $offsets[9]) {
+        if ($heap->{'beat_cnt'} == $offsets[8]) {
+            $heap->{'int_cnt'} = 0;
+        }
+        subscription_state_tests(@_);
+    } elsif ($heap->{'beat_cnt'} < $offsets[10]) {
+        if ($heap->{'beat_cnt'} == $offsets[9]) {
+            $heap->{'int_cnt'} = 0;
+        }
+        init_message_tests(@_);
     }
 
     # one day i will learn how to program loops
@@ -210,6 +233,10 @@ sub general_tests {
         $heap->{'method'} = 'SUBSCRIBE';
 	$heap->{'switch'} = '-s';
         $answer = $subs_fail_answer;
+    } elsif ($heap->{'beat_cnt'} <= 43) {
+        $heap->{'method'} = 'MESSAGE';
+        $heap->{'switch'} = '-m hi -mt sip:moby@thesea.com';
+        $answer = $msg_fail_answer;
     } else { die; }
 
     $heap->{'int_cnt'} = $heap->{'beat_cnt'}%11;
@@ -278,9 +305,12 @@ sub general_tests {
     }
     elsif ($heap->{'int_cnt'} == 8) {
 	my $l = get_header('To', $input);
-	if ($heap->{'switch'} ne '-s') {
+	if ($heap->{'switch'} eq '-r' || $heap->{'switch'} eq '-p') {
             like($l, qr/^To: "Moby_Dick" <sip:moby${AT}thesea.com>$/, 
-	      $heap->{'method'}.' display name is used in To: header');
+	         $heap->{'method'}.' display name is used in To: header');
+        } elsif ($heap->{'switch'} =~ /-m/) {
+            like($l, qr/^To: sip:moby${AT}thesea.com$/,
+                 $heap->{'method'}.' receiver is used in To: header');
         }
 	$kernel->post('test-server' => 'continue' => $input);
     }
@@ -548,9 +578,9 @@ sub init_subscribe_tests {
     }
     elsif ($heap->{'int_cnt'} == 6) {
 	my $l = get_header('To', $input);
-	is($l, 'To: <sip:nobody@nowhere.com>', 'SUBSCRIBE to header is ok');
+	is($l, 'To: sip:nobody@nowhere.com', 'SUBSCRIBE to header is ok');
 
-        system ('testpua.sh -rp 5059 -s -my-id=sip:nosy@somesi.te -my-name=Nosy -w=im:star@home.com');
+        system ('testpua.sh -rp 5059 -s -my-id=sip:nosy@somesi.te -my-name=Nosy -w=im:star@home.com -ep presence');
     }
     elsif ($heap->{'int_cnt'} == 7) {
 	my $l = get_header('From', $input);
@@ -941,7 +971,7 @@ sub notify_tests {
     }
     elsif ($heap->{'int_cnt'} == 3) {
 
-my $pres = `cat /tmp/t2`;
+        my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*not available or not online/s,
 	  'NOTIFY: exec-notify worked');
 
@@ -1009,22 +1039,139 @@ my $pres = `cat /tmp/t2`;
 	ok(-e '/tmp/t1', 'NOTIFY: exec called when note change');
 	ok(!(-e '/tmp/t3'), 'NOTIFY: exec-closed not called when note change');
 	ok(!(-e '/tmp/t4'), 'NOTIFY: exec-open not called when note change');
+    }
+    elsif ($heap->{'int_cnt'} == 7) {
+
 	$kernel->delay('send_udp_message', 2, 'INVITE sip:conny@192.168.123.2 SIP/2.0'.$CRLF.$CRLF);        
+        # $answer = $subs_fail_answer; # in order to stop the running process
     }
     elsif ($heap->{'int_cnt'} == 8) {
-        like($input, qr/501 not implemented/i, "INVITE correctly rejected");
+        # like($input, qr/501 not implemented/i, "INVITE correctly rejected");
+        $_[KERNEL]->delay('continue', 2); # should not send anything
+        `killall -HUP pua.pl`;
     }    
     $heap->{'int_cnt'}++;
 }
 
+
+# 
+# tests for various values of header Subscription-state
+sub subscription_state_tests {
+    my ( $kernel, $session, $heap, $input, $content)
+      = @_[KERNEL, SESSION, HEAP, ARG0, ARG1];
+
+    if ($heap->{'int_cnt'} == 0) {
+        $answer = $subs_ok_answer;
+        `rm /tmp/t2`; # left overs from previous run
+        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -no -se 20 -i=sip:me@exec.test -en \'cat>/tmp/t2\'');
+    } elsif ($heap->{'int_cnt'} == 1) {
+        $kernel->delay('send_udp_message', 2,
+                       get_notify('open', undef, "terminated; reason=timeout"));
+        $kernel->delay('continue', 3);
+
+    } elsif ($heap->{'int_cnt'} == 2) {
+        my $pres = `cat /tmp/t2`;
+        `rm /tmp/t2`; 
+        like($pres, qr/Presence information for sip:user${AT}192.168.123./s,
+             'NOTIFY: exec-notify worked with Subscription-State');
+
+        # again with long expiry on command line
+        system ('testpua.sh -rp 5059 -w sip:freak@show.de -s -se 2000 -i=sip:me@exec.test');
+    } elsif ($heap->{'int_cnt'} == 3) {
+        $kernel->delay('send_udp_message', 2,
+                       get_notify('open', undef, "active; expires=10"));
+    } elsif ($heap->{'int_cnt'} == 4) {
+        my $l = get_header('CSeq', $input);
+        is($l, 'CSeq: 2 SUBSCRIBE', 
+               'NOTIFY: considers expires param in Subscription-State header');
+        $kernel->delay('send_udp_message', 2,
+                       get_notify('open', undef, "terminated; retry-after=10"));
+    } elsif ($heap->{'int_cnt'} == 5) {
+        my $l = get_header('CSeq', $input);
+        is($l, 'CSeq: 3 SUBSCRIBE',
+               'NOTIFY: considers retry-after param in Subscription-State header');
+
+        `killall -HUP pua.pl`;
+    } elsif ($heap->{'int_cnt'} == 6) {
+        # next test: there must be no more subscriptions after termination
+        # due to other reasons, so start with a short delay
+        `killall -HUP pua.pl`;
+        system ('testpua.sh -rp 5059 -w sip:freak@show.de -s -se 10 -i=sip:me@exec.test');
+        
+    } elsif ($heap->{'int_cnt'} == 7) {
+        $kernel->delay('send_udp_message', 2,
+                       get_notify('open', undef, "terminated; reason=fired"));
+        $kernel->delay('continue', 20);
+    } elsif ($heap->{'int_cnt'} == 8) {
+        # there shouldn't be any message sent
+        if (defined $input) {
+            ok(0, 'NOTIFY: considers reason param in Subscription-State header');
+        } else {
+            ok(1, 'NOTIFY: considers reason param in Subscription-State header');
+        }
+        $kernel->delay('continue', 2);
+    }
+    $heap->{'int_cnt'}++;
+}
+
+
+#
+# message specific tests: 
+
+sub init_message_tests {
+    my ( $kernel, $session, $heap, $input, $content)
+      = @_[KERNEL, SESSION, HEAP, ARG0, ARG1];
+
+    if ($heap->{'int_cnt'} == 0) {
+        $answer = $msg_fail_answer;
+        system ('testpua.sh -rp 5059 -mt sip:post@box.edu -m "hi" -i sip:conny@192.168.123.2:5059');
+    }
+    elsif ($heap->{'int_cnt'} == 1) {
+        my @lines = split ("\n", $input);
+        like($lines[0],
+             qr/^MESSAGE sip:post${AT}box.edu(:5059)? SIP.2\.0$/,
+             'MESSAGE -mt sip-id');
+        my $l = get_header('Content-Type', $input);
+        is($l, 'Content-Type: text/plain',
+           'MESSAGE Content-Type is ok');
+        # must not have expires header on default
+        is(get_header('Expires', $input), undef, 
+           'MESSAGE does not expire on default');
+        is(get_header('Date', $input), undef, 
+           'MESSAGE has no date on default');
+        $l = get_header('Content-Length', $input);
+        is($l, 'Content-Length: 2',
+           'MESSAGE Content-Length is ok');
+
+        # prepare the next test
+        system ('testpua.sh -rp 5059 -mt mailto:greta@garbo.se -m Getting_it_on_in_the_sunshine -i=sip:nobody@nowhere.com -me 600');
+   }
+   elsif ($heap->{'int_cnt'} == 2) {
+        # must have expires header
+        my $l = get_header('Expires', $input);
+        is ($l, 'Expires: 600', 'MESSAGE expires after 600');
+        $l = get_header('Date', $input);
+        like($l, qr/^Date: /, 'MESSAGE has Date');
+        # newline is added, should that be an error?
+        is($content, 'Getting_it_on_in_the_sunshine'."\n", 'MESSAGE has right content');
+        # prepare the next test
+        # system ('testpua.sh -rp 5059 -mr -i=sip:nobody@nowhere.com');
+        $_[KERNEL]->delay('continue', 2); # should not send anything
+
+    }
+
+    $heap->{'int_cnt'}++;
+}
 
 
 #############################################################################
 
 #
 # return a notify message
+# parameters are: basic status, optional note, optional subscription state 
+# header.
 sub get_notify {
-    my ($c, $n) = @_;
+    my ($c, $n, $s) = @_;
     my $content = '<?xml version="1.0"?>
 <!DOCTYPE presence PUBLIC "//IETF//DTD RFCxxxx PIDF 1.0//EN" "pidf.dtd">
 <presence entity="sip:user@192.168.123.2">
@@ -1040,9 +1187,14 @@ sub get_notify {
 </tuple>
 </presence>".$CRLF;
 
-    return 'NOTIFY sip:conny@192.168.123.2 SIP/2.0'.$CRLF.
-           'Via: SIP/2.0/UDP vertigo:5060;branch=z9hG4bK10351112082863@vertigo'.$CRLF.
-           'Content-Length: '.length($content).$CRLF.$CRLF.$content;
+    my $ret = 
+           'NOTIFY sip:conny@192.168.123.2 SIP/2.0'.$CRLF.
+           'Via: SIP/2.0/UDP vertigo:5060;branch=z9hG4bK10351112082863@vertigo'.$CRLF;
+    if (defined $s) {
+        $ret .= 'Subscription-State: '.$s.$CRLF;
+    }
+    $ret .= 'Content-Length: '.length($content).$CRLF.$CRLF.$content;
+    return $ret;
 }
 
 #
