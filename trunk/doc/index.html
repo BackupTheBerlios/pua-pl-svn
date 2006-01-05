@@ -18,11 +18,7 @@ pua.pl is a command-line presence user agent in terms of RFC 3856.
 It uses SIP/SIMPLE to
 communicate to a server, and supports partly the following standards:
 rfc-3261 (SIP), rfc-3903 (PUBLISH), rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), 
-rfc-3863 (pidf). <p>
-
-There is an experimental online demo of pua.pl: check out 
-<a href="http://www.in-ulm-herum.de/webui/ppl.pl">http://www.in-ulm-herum.de/webui/ppl.pl</a> for a gateway HTTP -&gt; SIMPLE. You can enter the SIP parameter
-online, and see the SIP message it sends. <p>
+rfc-3863 (pidf), rfc-3857 & rfc-3858 (watcher info). <p>
 
 Pua.pl can do 3 things: 
 register at a sip server, publish presence information and subscribe and 
@@ -37,12 +33,19 @@ this means, read on with section intro.<p>
 	<li><a href="#o">Advanced Options</a></li>
 	<li><a href="#e">More on --exec</a></li>
 	<li><a href="#d">Download and Install</a></li>
-</ol>
+</ol><p>
+
+There is an experimental online demo of pua.pl: check out
+<a href="http://www.in-ulm-herum.de/webui/ppl.pl">http://www.in-ulm-herum.de/webui/ppl.pl</a> for a gateway HTTP -&gt; SIMPLE. You can enter the SIP parameter
+online, and see the SIP messages it sends and receives. <p>
+
+
 
 <h3><a name="intro">Intro</a></h3>
 
-Here, presence means the willingness and ability of a user to communicate with
-other users on the network. The presence information gives the way how to 
+The term Presence stands for the willingness and ability of a user to 
+communicate with
+other users on the network. The presence information give a hint how 
 to communicate. Consider the following example: you would like to be contacted 
 via email, only in urgent cases on your mobile phone. The presence information 
 might include the following: <p>
@@ -362,8 +365,9 @@ ron@p5499A632.dip.t-dialin.net for instant messaging:<p>
 Get the latest sources with <code>svn checkout svn://svn.berlios.de/pua-pl</code><p>
 Get a tarball of the latest release from <a href="ftp://ftp.berlios.de/pub/pua-pl">here</a>.<p>
 
-pua.pl is tested with linux, perl v5.8.0 (which is pretty old). I think
-it could run with windows/cygwin, but I didn't try. <p>
+pua.pl is tested with linux, perl v5.8.0 (which is pretty old). Also it 
+is proven to run
+on Microsoft Windows 2000 with active perl. <p>
 
 It requires perl, libwww (LWP), URI XML::Parser (which requires the 
 <a href="http://www.libexpat.org/">Expat library</a>) and POE, see 

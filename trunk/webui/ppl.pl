@@ -88,12 +88,15 @@ unless ($proxy) {
 	$cmd1 =~ s/--password=[^ ]*/--password=xxxx/;
 
 	print "<h3>Command line</h3>", $cmd1, "<p>\n";
-	print "More to come, please wait ...<p>\n";
+	print "More to come, please wait ... (max 30 seconds)<p>\n";
 
 	# backticks!
 	my $out = `perl -I ${PATH_TO_LIBS} -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd`;
 
-	my ($res, @messages) = parseOutput($out, $query->param('proxy'));
+        my ($res, @messages) = parseOutput($out, $query->param('proxy'));
+        # print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
+        print "<pre>$res</pre><p>\n";
+
 
         # write result to logfile
         if (open LOG, ">> ${PATH_TO_PROG}/logfile") {
@@ -103,8 +106,6 @@ unless ($proxy) {
             print LOG "$res";
             close LOG;
         }
-
-	print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
 	if (@messages and $#messages > 0) {
   	    print "<h3>SIP messages</h3>\n";
@@ -262,7 +263,7 @@ sub check_param {
     }
 
     my $wa = $query->param('watch');
-    if ($wa ne '' && !($wa =~ /^([-a-z@._0-9:])+$/i)) {
+    if ($wa ne '' && $wa ne 'sip:' && !($wa =~ /^([-a-z@._0-9:])+$/i)) {
 	return 'Invalid character in watcher URI.';
     }
 
@@ -348,7 +349,7 @@ sub print_form {
 	print "and this is a user interface to run it - and a HTTP ";
 	print "to SIP gateway.<p>\n";
 
-	print "pua.pl is a actually a command-line and it uses SIP/SIMPLE ";
+	print "pua.pl is a actually a command-line tool and it uses SIP/SIMPLE ";
 	print "to communicate to a server, and it partly supports the ";
 	print "following standards: rfc-3261 (SIP), rfc-3903 (PUBLISH), ";
 	print "rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), rfc-3863 (pidf).<p>\n";
@@ -519,6 +520,8 @@ sub printSubscribeForm {
     my $w = $query->param('watch');
     if (defined $w) {
 	print "value='$w'";
+    } else {
+        print "value='sip:'";
     }
     print "/>";
 
