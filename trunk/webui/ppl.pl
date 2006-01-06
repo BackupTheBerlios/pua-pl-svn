@@ -94,9 +94,7 @@ unless ($proxy) {
 	my $out = `perl -I ${PATH_TO_LIBS} -I${PATH_TO_PROG}. -- ${PATH_TO_PROG}$cmd`;
 
         my ($res, @messages) = parseOutput($out, $query->param('proxy'));
-        # print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
-        print "<pre>$res</pre><p>\n";
-
+        print "<h3>Output of pua.pl</h3><pre>$res</pre><p>\n";
 
         # write result to logfile
         if (open LOG, ">> ${PATH_TO_PROG}/logfile") {
