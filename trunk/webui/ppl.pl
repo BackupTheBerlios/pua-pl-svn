@@ -322,11 +322,12 @@ sub parseOutput {
 
 	} elsif ($line =~ /^<<< (.*)$/) {
 	    # incoming msg
-	    $msg .= escapeHTML($1) . "\n";
-
+	    my $l = break_line($1);
+            $msg .= escapeHTML($l);
 	} elsif ($line =~ /^>>> (.*)$/) {
 	    # outgoing msg
-	    $msg .= escapeHTML($1) . "\n";
+            my $l = break_line($1);
+            $msg .= escapeHTML($l);
 	} elsif ($line eq '>>>>>>') {
 	    # new outgoing message
 	    $msg .= '</pre>';
@@ -339,6 +340,31 @@ sub parseOutput {
     }
 
     return ($ret, @messages, $msg);
+}
+
+#
+# break a over-long line into several, try to format
+# the result nicely
+sub break_line {
+    my $longline = $_[0];
+    my $ret;
+
+    while (length($longline) > 80) {
+        # break it into more than 1 line
+        my $sep = ";";
+        my $pos = rindex($longline, $sep, 75); # backwards
+        if ($pos == -1) {
+            $pos = index($longline, $sep); # first occurence
+            if ($pos == -1 || $pos > 80) {
+                $pos = 75; # never mind
+            }
+        }
+        $ret .= substr($longline, 0, $pos+1)."\n     " ;
+        $longline = substr($longline, $pos+1);
+    }
+    # rest
+    $ret .= $longline . "\n";
+    return $ret;
 }
 
 #
