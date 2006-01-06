@@ -104,31 +104,18 @@ is($res, $expected, '1 watcher using dedicated namespace');
 
 #############################################################################
 
-$doc = '<?xml version="1.0" encoding="UTF-8"?>
-   <impp:presence xmlns:impp="urn:ietf:params:xml:ns:pidf"
-        xmlns:myex="http://id.mycompany.com/presence/"
-        entity="pres:someone@example.com">
-     <impp:tuple id="tj25ds">
-       <impp:status>
-         <impp:basic>open</impp:basic>
-       </impp:status>
-       <myex:complexExtension>
-         <myex:ex1 impp:mustUnderstand="1">val1</myex:ex1>
-         <myex:ex2>val2</myex:ex2>
-       </myex:complexExtension>
-       <impp:contact priority="0.725">tel:+09012345678</impp:contact>
-     </impp:tuple>
-     <myex:mytag>My extended presentity information</myex:mytag>
-   </impp:presence>';
+$doc = '<?xml version="1.0"?>
+<watcherinfo xmlns="urn:ietf:params:xml:ns:watcherinfo" version="0" state="full">
+  <watcher-list resource="sip:yivi@pals-dev.internet2.edu" package="presence">
+  </watcher-list>
+</watcherinfo>';
 
-$expected = 'Presence information for pres:someone@example.com:
-  available and online
-    prioity of this way of communication: 0.725
-    using address: tel:+09012345678
+$expected = 'Watcher information for sip:yivi@pals-dev.internet2.edu:
+Not watched by anybody
 ';
 
-#pidf_parse($doc, $log, sub{ $res = $_[0]; });
-#is($res, $expected, 'mandatory to understand elements');
+watcherinfo::watcherinfo_parse($doc, $log, sub{ $res = $_[0]; });
+is($res, $expected, 'empty watcher list');
 
 
 #############################################################################
