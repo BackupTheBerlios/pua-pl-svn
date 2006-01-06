@@ -544,7 +544,7 @@ sub append_input {
 
     # trace the received message
     if ($options->{'trace'}) {
-	if ($headers eq '') {
+	if ($headers eq '' and $input ne '') {
 	    $log->write(NOTICE, '<<<<<<');
 	}
 	$log->write(NOTICE, '<<< '. $input);
