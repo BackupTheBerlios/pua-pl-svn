@@ -16,7 +16,7 @@ my $query = new CGI;
 # my $PATH_TO_PROG ='/home/holzhey-de/htdocs/cgi-bin/pua-pl/';
 # my $PATH_TO_PROG =`pwd`;
 # chomp $PATH_TO_PROG;  
-# $PATH_TO_PROG .= '/../';
+# my $PATH_TO_PROG .= '../';
 
 my $PATH_TO_PROG ='/pua-pl/';
 my $PATH_TO_LIBS = '.';
@@ -64,6 +64,9 @@ unless ($proxy) {
  	    if ($query->param('contact') ne '') {
 	        $opts .= '--contact='.$query->param('contact').' ';
 	    }
+            if ($query->param('note') ne '') {
+                $opts .= '--note="'.$query->param('note').'" ';
+            }
         } 
 	if (defined $subscribe and $subscribe eq 'ON') {
 	    $opts .= '-s -no -se 30 ';
@@ -286,7 +289,11 @@ sub check_param {
         return 'Expiry duration for Publish is not a number';
     }
 
-
+    my $no = $query->param('note');
+    if ($no ne '' && !($no =~ /^[\w\.,+-\s]*$/)) {
+        return 'Characters for the note to be published are limited'.
+               ' to alphanumeric, underscore and whitespace.';
+    } 
     return '';
 } 
 
@@ -350,11 +357,12 @@ sub print_form {
 	print "pua.pl is a actually a command-line tool and it uses SIP/SIMPLE ";
 	print "to communicate to a server, and it partly supports the ";
 	print "following standards: rfc-3261 (SIP), rfc-3903 (PUBLISH), ";
-	print "rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), rfc-3863 (pidf).<p>\n";
-	
+	print "rfc-3265 & rfc-3856 (NOTIFY, SUBSCRIBE), rfc-3863 (pidf), ";
+        print "rfc-3857 & rfc-3858 (watcher info).<p>\n";
+        
 	print "Running pua.pl thru this script limites the useage to a ";
 	print "subset of options - see <a href=\"http://pua-pl.berlios.de\">";
-        print "here</a> for the complete list of options.";
+        print "here</a> for the complete list of options. ";
 	print "With this frontend, it is possible to do 3 things: register ";
 	print "at a sip server, publish presence information and check ";
 	print "some other user's presence information. ";;
@@ -609,7 +617,16 @@ sub printPublishForm {
     }
     print ' /></td><td>Timeout in seconds how long the published '.
           'contact address is valid. After expiry, the Publish '.
-          'operation needs to be performed again.';
+          'operation needs to be performed again.<p>';
+
+    # note
+    print '<tr><td>Note<br><input type=\'text\' name=\'note\' ';
+    my $note = $query->param('note');
+    if (defined $note) {
+        print 'value=\''.$note.'\'';
+    }
+    print ' maxlength=128 /></td><td>A human readable comment, '.
+          'which will be indicated to the subscriber.';
 
 print <<'EOF'
 <p></td></tr></table></td></tr></table>";
