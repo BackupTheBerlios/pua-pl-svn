@@ -131,7 +131,7 @@ our $SIP_PUBLISH_EXPIRES = 3600; # default ???
 #
 # Value of the User-Agent header
 
-our $SIP_USER_AGENT = basename($PROGRAM_NAME). ' '.$VERSION;
+our $SIP_USER_AGENT = basename($PROGRAM_NAME). ' v'.$VERSION;
 
 #
 # local port where to listen for incoming notifications, on default it is 5060
