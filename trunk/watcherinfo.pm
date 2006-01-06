@@ -35,6 +35,7 @@ my $winfo_package; # global for the package watched
 my $resource;      # watched resource name found inf the watcher-list statement
 my $log;           # of type Log::Easy
 my $out;           # a text decribing the pidf
+my $found;         # set to true if at least 1 watcher exists
 my $callback1;     # specified by the caller, called with the descriptive 
                    # result of parsing, usually to be printed
 my $callback2;     # specified by the caller, called with the result of parsing,
@@ -68,6 +69,7 @@ sub watcherinfo_parse {
     $callback2 = $cb2;
     $cb_arg1   = $arg1;
     $cb_arg2   = $arg2;
+    $found     = 0;
 
     my $parser = new XML::Parser(Style => 'Stream');
     $parser->setHandlers(Final    => \&watcherinfo_handleFinal);
@@ -161,6 +163,7 @@ sub Text {
             if (exists $winfo{'expiration'}) {
                 $out .= '    subscription ends in '.$winfo{'expiration'}." seconds\n";
             } 
+            $found = 1;
 	}
     }
 }
@@ -187,6 +190,12 @@ sub EndTag {
 #
 # handler called when is parsing finished. Call parent CB
 sub watcherinfo_handleFinal {
+    if (!$found) {
+        $out .= "Not watched by anybody\n";
+    } else {
+        $found = 0;
+    }
+
     if (defined $callback1) {
 	&$callback1($out, $cb_arg1);	
     } else {
