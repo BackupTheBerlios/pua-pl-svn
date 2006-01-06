@@ -326,12 +326,15 @@ sub get_call_id {
 #
 # create a correctly formated date, as used in the header Date
 # RFC822-conformant.
-# usage: get_date(time) returns e.g. Sat, 13 Nov 2010 23:29:00 GMT
+# usage: get_date() returns e.g. Sat, 13 Nov 2010 23:29:00 GMT
 
 sub get_date {
     my $self = shift;
 
-    my $now_string = strftime "%a, %d %b %Y %H:%M:%S %z", localtime;
+    my @lt = localtime;
+    # $lt[1] -= 2; for testing expiry dates in the past
+
+    my $now_string = strftime "%a, %d %b %Y %H:%M:%S %z", @lt;
     return $now_string;
 }
 
