@@ -221,7 +221,7 @@ sub control {
                                                    $options->{exec_notify}. ", $!");
                                            print EXEC $_[0];
                                            close EXEC;
-                                       };
+                                       }
                                        $self->{log}->write(WARN, $SIP_USER_AGENT.': '.$_[0]);
                                      },
                                      $self,          # arg 1
@@ -233,7 +233,7 @@ sub control {
                 } elsif ($self->{package} eq 'presence.winfo') {
 
                     # subscription to watcher info, body is watcherinfo.xml format
-                    watchinfo_parse($content, 
+                    watcherinfo::watcherinfo_parse($content, 
                                     $log, 
                                     sub {   # callback #1
                                         my $self = $_[1];
@@ -244,7 +244,7 @@ sub control {
                                                     $options->{exec_notify}. ", $!");
                                             print EXEC $_[0];
                                             close EXEC;
-                                        };
+                                        }
                                         $self->{log}->write(WARN, 
                                                             $SIP_USER_AGENT.': '.$_[0]);
                                     },
@@ -252,7 +252,7 @@ sub control {
                                     undef,  # callback #2
                                     $self); # arg 2
 
-                    $self->{log}->write(WARN, "$SIP_USER_AGENT: watcherinfo: $content");
+                    $self->{log}->write(INFO, "$SIP_USER_AGENT: watcherinfo: $content");
                 }
             }
 
@@ -264,7 +264,7 @@ sub control {
 		    # ready
 		    $ret = 'x';
 		    $self->change_state('subs_ignoring');
-                    $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
+                    $log->write(DEBUG, "Subscribe: Notification received, leaving.");
 		} else {
 		    # stay in this state, wait for next
                     $ret = 'running';
@@ -280,7 +280,7 @@ sub control {
 		if ($options->{notify_once}) {
 		    # ready
 		    $ret = 'x';
-                    $log->write(WARN, "$SIP_USER_AGENT: Notification received, leaving.");
+                    $log->write(DEBUG, "Subscribe: Notification received, leaving.");
 		    $self->change_state('subs_ignoring');
 		} else {
                     if (defined $delay and $delay > 0) {
