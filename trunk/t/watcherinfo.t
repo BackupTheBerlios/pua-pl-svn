@@ -8,12 +8,28 @@ use Test::More 'no_plan';
 use lib '..';
 use Log::Easy;
 
-require "../watcherinfo.pm";
+use Winfo;
 
 my $log = new Log::Easy;
-$log->log_level(SPEW);#INFO);#TRACE);
+$log->log_level(INFO);#TRACE);
 $log->prefix('');
 
+my $options = new Options($log, 'testing');
+
+
+# test object #1
+my $pwinfo = new Winfo($log, $options, 'presence');
+# test object #2
+my $pwinfo2 = new Winfo($log, $options, 'presence.winfo');
+
+is ($pwinfo->get_content_type(), 'application/watcherinfo+xml',
+    'winfo: using correct content type');
+is ($pwinfo2->get_content_type(), 'application/watcherinfo+xml',
+    'winfo2: using correct content type');
+is ($pwinfo->get_name(), 'presence.winfo', 
+    'winfo: using correct package name');
+is ($pwinfo2->get_name(), 'presence.winfo.winfo', 
+    'winfo2: using correct package name');
 
 
 
@@ -37,8 +53,33 @@ my $expected = 'Watcher information for sip:B@example.com:
 
 my $res;
 
-watcherinfo::watcherinfo_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, '1 watcher using default namespace');
+$res = $pwinfo->parse($doc);
+is($res, $expected, 'winfo:1 watcher using default namespace');
+$res = $pwinfo2->parse($doc);
+is($res, '', 'winfo2: ignoring other packages');
+
+# same again with changed roles, using package presence.winfo
+
+$doc = '<?xml version="1.0"?>
+   <watcherinfo xmlns="urn:ietf:params:xml:ns:watcherinfo"
+                version="0" state="full">
+      <watcher-list resource="sip:B@example.com" package="presence.winfo">
+        <watcher id="7768a77s" event="subscribe"
+                 status="pending">sip:A@example.com</watcher>
+      </watcher-list>
+   </watcherinfo>';
+
+
+$expected = 'Watcher information for sip:B@example.com:
+  pending subscription of sip:B@example.com\'s presence.winfo by
+    sip:A@example.com
+';
+
+$res = $pwinfo2->parse($doc);
+is($res, $expected, 'winfo2: 1 watcher using default namespace');
+$res = $pwinfo->parse($doc);
+is($res, '', 'winfo: ignoring other packages');
+
 
 
 
@@ -69,14 +110,47 @@ $expected = 'Watcher information for sip:professor@example.net:
     sip:userA@example.net
     last time renewed 509 seconds ago
     subscription ends in 5 seconds
-  pending subscription of sip:professor@example.net by
+  pending subscription of sip:professor@example.net\'s presence by
     Mr. Subscriber <sip:userB@example.org>
 ';
 
 
+$res = $pwinfo->parse($doc);
+is($res, $expected, 'winfo: 2 watcher using default namespace');
 
-watcherinfo::watcherinfo_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, '2 watcher using default namespace');
+# again with presence.winfo
+
+$doc = '<?xml version="1.0"?>
+<watcherinfo xmlns="urn:ietf:params:xml:ns:watcherinfo"
+             version="0" state="full">
+  <watcher-list resource="sip:professor@example.net" package="presence.winfo">
+    <watcher status="active"
+             id="8ajksjda7s"
+             duration-subscribed="509"
+             expiration="5"
+             event="approved" >sip:userA@example.net</watcher>
+    <watcher status="pending"
+             id="hh8juja87s997-ass7"
+             display-name="Mr. Subscriber" xml:lang="De_de"
+             event="subscribe">sip:userB@example.org</watcher>
+  </watcher-list>
+</watcherinfo>';
+
+$expected = 'Watcher information for sip:professor@example.net:
+  active subscription of sip:professor@example.net\'s presence.winfo by
+    sip:userA@example.net
+    last time renewed 509 seconds ago
+    subscription ends in 5 seconds
+  pending subscription of sip:professor@example.net\'s presence.winfo by
+    Mr. Subscriber <sip:userB@example.org>
+';
+
+
+$res = $pwinfo->parse($doc);
+is($res, '', 'winfo: ignoring foreign packages');
+$res = $pwinfo2->parse($doc);
+is($res, $expected, 'winfo2: 2 watcher using default namespace');
+
 
 #############################################################################
 
@@ -98,8 +172,8 @@ $expected = 'Watcher information for sip:B@example.com:
     sip:A@example.com
 ';
 
-watcherinfo::watcherinfo_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, '1 watcher using dedicated namespace');
+$res = $pwinfo->parse($doc);
+is($res, $expected, 'winfo: 1 watcher using dedicated namespace');
 
 
 #############################################################################
@@ -111,11 +185,11 @@ $doc = '<?xml version="1.0"?>
 </watcherinfo>';
 
 $expected = 'Watcher information for sip:yivi@pals-dev.internet2.edu:
-Not watched by anybody
+  presence is not watched by anybody
 ';
 
-watcherinfo::watcherinfo_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'empty watcher list');
+$res = $pwinfo->parse($doc);
+is($res, $expected, 'winfo: empty watcher list');
 
 
 #############################################################################
@@ -147,6 +221,7 @@ sub callback {
     is ($cb_arg, 'Hammelswade', 'Callback2 arg arg');
 }
 
+# TODO template stuff
 #pidf_parse($doc, $log, undef, undef, \&callback, 'Hammelswade');
 
 

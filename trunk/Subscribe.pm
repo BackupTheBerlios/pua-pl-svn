@@ -23,16 +23,16 @@ use Handler;            # super class
 use vars qw(@ISA);
 @ISA = qw(Handler);
 
-require pidf;           # my own submodule, for parsing pidf XML documents
-require watcherinfo;    # my own submodule, for parsing watchinfo documents
+use Pidf;     # my own submodule, event package for pidf XML docs
+use Winfo;    # my own submodule, event package for watchinfo docs
 
 
 ###### methods ##############################################################
 
 #
 # Constructor, expects reference to the log object, and to the options
-# additionally expects name of the package, either 'presence' or
-# 'presence.winfo'
+# additionally expects name of the package, like 'presence' or
+# 'presence.winfo' or ...
 
 sub new {
     my $class        = shift;
@@ -43,8 +43,18 @@ sub new {
     $self->{options} = shift;               # reference to the options object
     $self->{package} = shift;               # reference to the package name
     $self->{state}   = 'subs_initializing'; # sub state for subscribe
-    $self->{tuples}  = ();                  # empty hash
 
+    # create the event package object, sort of if-elsif-factory would do
+    if ($self->{package} =~ /^(.*)\.winfo$/) {
+        $self->{event_package} = new Winfo($self->{log}, 
+					   $self->{options}, $1);
+    } elsif ($self->{package} eq 'presence') {
+        $self->{event_package} = new Pidf($self->{log}, 
+					  $self->{options});
+    } else {
+	$self->{log}->write(WARN, "$SIP_USER_AGENT Warning: Unknown event package ".
+			    "$self->{package}");
+    }
     return $self;
 }
 
@@ -80,10 +90,8 @@ sub get_msg {
     # set some extra header lines, subscribe specific
 
     $headers = 'Event: '.$self->{package}.$CRLF;
-    if ($self->{package} =~ /\.winfo$/i) {
-        $headers .= 'Accept: application/watcherinfo+xml'.$CRLF;
-    } else {
-        $headers .= 'Accept: application/pidf+xml'.$CRLF;
+    if (exists ($self->{event_package})) {
+        $headers .= 'Accept: '.$self->{event_package}->get_content_type().$CRLF;
     }
     $headers .= 'Expires: '.$expires.$CRLF.
 	        'Contact: <sip:'.$options->{login} . 
@@ -207,53 +215,19 @@ sub control {
 
             if (length($content)) {
 	        # parse the body, the message content
-                if ($self->{package} eq 'presence') {
-
-                    # body should be pidf document
-                    pidf::pidf_parse($content, 
-                                     $log, 
-                                     sub {           # callback #1
-                                       my $self = $_[1];
-                                       my $options = $self->{options};
-                                       if ($options->{exec_notify} ne '') {
-                                           open(EXEC, '| '.$options->{exec_notify}) or
-                                               die("$SIP_USER_AGENT: Can't run ".
-                                                   $options->{exec_notify}. ", $!");
-                                           print EXEC $_[0];
-                                           close EXEC;
-                                       }
-                                       $self->{log}->write(WARN, $SIP_USER_AGENT.': '.$_[0]);
-                                     },
-                                     $self,          # arg 1
-                                     \&handle_tuple, # callback #2
-                                     $self);         # arg 2
-
-                    $self->clean_tuples(); # remove the remaining old ones
-
-                } elsif ($self->{package} eq 'presence.winfo') {
-
-                    # subscription to watcher info, body is watcherinfo.xml format
-                    watcherinfo::watcherinfo_parse($content, 
-                                    $log, 
-                                    sub {   # callback #1
-                                        my $self = $_[1];
-                                        my $options = $self->{options};
-                                        if ($options->{exec_notify} ne '') {
-                                            open(EXEC, '| '.$options->{exec_notify}) or
-                                                die("$SIP_USER_AGENT: Can't run ".
-                                                    $options->{exec_notify}. ", $!");
-                                            print EXEC $_[0];
-                                            close EXEC;
-                                        }
-                                        $self->{log}->write(WARN, 
-                                                            $SIP_USER_AGENT.': '.$_[0]);
-                                    },
-                                    $self,  # arg 1
-                                    undef,  # callback #2
-                                    $self); # arg 2
-
-                    $self->{log}->write(INFO, "$SIP_USER_AGENT: watcherinfo: $content");
+                if (exists $self->{event_package}) {
+                    my $cont = $self->{event_package}->parse($content);
+                    if (defined $cont and $cont ne '') {
+			$self->{log}->write(WARN, $SIP_USER_AGENT.': '.$cont);
+			$self->run_exec($options->{'exec_'.$self->{package}}, 
+					$cont);
+		    }
                 }
+                # pass the entire xml document to the executable
+		$self->run_exec($options->{'exec_xml_'.$self->{package}}, 
+				$content);
+                # pass the entire xml document to the generic executable
+		$self->run_exec($options->{'exec_xml'}, $content);
             }
 
             my ($status, $delay) = $self->notify_check($header);
@@ -448,137 +422,14 @@ sub handle_message {
     }
 }
 
-# 
-# handle a single tuple as parsed by pidf_parser, this is a callback
-# keep the tuple to remember it later, and to react on changes
-
-sub handle_tuple {
-    my($entity, $status, $contact, $prio, $note, $timestamp, $self) = @_;
-    my %tuples;
-    my $options = $self->{options};
-
-    if (defined $self->{tuples}) {
-	%tuples = %{$self->{tuples}};
-    } else {
-	%tuples = ();
-    }
-	    
-    my $t = Subscribe::Tuple->new($entity, $status, $contact, $prio, $note, $timestamp);
-
-    # check if we have a contact field, if not, then we use the entity
-    # field as identifier, and expect to have only one tuple
-
-    my $id;
-    if (defined $contact) { 
-	$id = $contact; 
-    } else {
-        $id = $entity; 
-    }
-
-    if (exists $tuples{$id}) {
-	if ($t->equals($tuples{$id})) {
-	    # it's an update of the same
-	} else {
-	    # exec programs given on the command line
-	    $self->run_exec($options->{exec_changed}, 
-			    $entity, $status, $contact, 
-			    $prio, $note, $timestamp);
-	    
-
-	    if ($t->{status} eq 'open' && (
- 	        (exists $tuples{$id}->{status} 
-		 && $tuples{$id}->{status} eq 'closed')
-		      || !exists $tuples{$id}->{status})) {
-		# change from closed (or unknown) to open
-		$self->run_exec($options->{exec_open}, 
-				$entity, $status, $contact, 
-				$prio, $note, $timestamp);	
-	    }
-
-	    if ($t->{status} eq 'closed' 
- 	        && exists($tuples{$id}->{status})
-		&& $tuples{$id}->{status} eq 'open') {
-		# change from open to closed
-		$self->run_exec($options->{exec_closed}, 
-				$entity, $status, $contact, 
-				$prio, $note, $timestamp);
-	    }
-	}
-    } # end if exists 
-    else {
-	# its the first time
-	$self->run_exec($options->{exec_changed}, 
-			$entity, $status, $contact, 
-			$prio, $note, $timestamp);
-
-	if ($t->{status} eq 'open') {
-	    $self->run_exec($options->{exec_open}, 
-			    $entity, $status, $contact, 
-			    $prio, $note, $timestamp);
-	}
-
-	if ($t->{status} eq 'closed') {
-	    $self->run_exec($options->{exec_closed}, 
-			    $entity, $status, $contact, 
-			    $prio, $note, $timestamp);
-	}
-    }
-    $self->{new_tuples}{$id} = $t; # keep the new one
-}
-
-
-# 
-# all tuples found in $self->tuples but not in passed list are
-# obsolete and to be removed
-
-sub clean_tuples {
-    my $self = shift;
-    my $key;
-    my %old;
-
-    if (defined $self->{tuples}) {
-	%old = %{$self->{tuples}};
-    } else {
-	%old = ();
-    }
-
-    my %new = %{$self->{new_tuples}};
-    my $options = $self->{options};
-
-    foreach $key (keys %old) {
-	unless (exists $new{$key}) {
-	    my $t = $old{$key}; # the tuple
-	    # say goodby
-	    $self->run_exec($options->{exec_closed}, 
-			    $t->{entity}, 
-			    'closed', 
-			    $t->{contact}, 
-			    $t->{prio}, 
-			    $t->{note}, 
-			    $t->{timestamp});
-
-	    $self->run_exec($options->{exec_changed}, 
-			    $t->{entity}, 
-			    'closed', 
-			    $t->{contact}, 
-			    $t->{prio}, 
-			    $t->{note}, 
-			    $t->{timestamp}); 
-	}
-
-	delete $old{$key};
-    }
-
-    $self->{tuples} = $self->{new_tuples}; # new gets old
-}
 
 
 #
 # parse the header of the received NOTIFY message and return one of
 # the following, depending on the header 'Subscription-State'.
-# 'ok'           - in case it is a plain presence notification with 
-#                  a  pidf body, extra parameter timeout is set in
-#                  case a expiry parameter is found
+# 'ok'           - in case it is a plain notification with a body,
+#                  extra parameter timeout is set in case a expiry 
+#                  parameter is found
 # 're-subscribe' - in case the server wants us to subscribe again.
 #                  Extra parameter nnnn is set in case the pa wants
 #                  us to retry subscription after nnnn second
@@ -630,44 +481,17 @@ sub notify_check {
 
 sub run_exec {
     my $self = shift;
+    my ($cmd, $input) = @_;
 
-    # remove newlines of the args for passing on command line
-    foreach (1..4,6) {
-	if (defined $_[$_]) {
-	    $_[$_] =~ s/$CRLF//gs;
-	    $_[$_] =~ s/\n//gs;
-	}
-    }
-
-    my ($cmd, $entity, $status, $contact, $prio, $note, $timestamp) = @_;
-
-    if ($cmd eq '') {
+    if (!defined $cmd or $cmd eq '') {
 	return;
     }
 
-    my $args = " -e $entity";
-    if (defined $status) {
-	$args .= " -s $status";
-    }
-    if (defined $contact) {
-	$args .= " -c $contact";
-    }
-    if (defined $prio) {
-	$args .= " -p $prio";
-    }
-    if (defined $timestamp) {
-	$args .= " -t $timestamp";
-    }
-
-    if ($cmd ne '') {
-	$log->write(TRACE, 'notify: exec '.$cmd.$args);
-	open(EXEC, '| '.$cmd.$args) or die("$SIP_USER_AGENT: Can't run ".
-					   $cmd. ", $!");
-	if (defined $note) {
-	    print EXEC $note;
-	}
-	close EXEC;
-    }
+    $log->write(TRACE, 'notify: exec '.$cmd);
+    open(EXEC, '| '.$cmd) or die("$SIP_USER_AGENT: Can't run ".
+				 $cmd. ", $!");
+    print EXEC $input;
+    close EXEC;
 }
 
 
@@ -742,8 +566,8 @@ sub check_message {
     } 
 
     # send a ok reply to the server, if it was a notify
-    
-    if ($l0 =~ /^NOTIFY/) {    
+ 
+    if ($l0 =~ /^NOTIFY/) {
         $ok = $self->get_ok_reply_msg($return_headers);
 	$log->write(SPEW, "server: reply with $ok");
         $ret = 'notified';
@@ -753,41 +577,6 @@ sub check_message {
 }
 
 
-#
-# subclass for hiding the presence tuple
 
-package Subscribe::Tuple;
-
-    my @args = ('entity', 'status', 'contact', 'prio', 'note', 'timestamp');
-
-    # expects the arguments in this order:
-    # $entity, $status, $contact, $prio, $note, $timestamp
-    sub Subscribe::Tuple::new {
-	my $class = shift;
-	my $self  = {};
-	bless($self);
-	
-	foreach (@args) {
-	    $self->{$_} = shift; 
-	}
-
-	return $self;
-    }
-
-    # return true if this tuple is identical to the passed one
-    sub equals {
-	my $self = shift;
-	my $other = shift;
-
-	foreach (@args) {
-	    if (defined $self->{$_} && defined $other->{$_}) {
-	        return 0 if ($self->{$_} ne $other->{$_});
-	    } elsif (defined $self->{$_} || defined $other->{$_}) {
-		return 0;
-	    }
-	}
-	return 1;
-    }
-# end package tuple
 
 1;

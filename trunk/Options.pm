@@ -154,6 +154,8 @@ our $SIP_REMOTE_PORT = 5060;
 sub new {
     my $class = shift;
     $log      = shift;
+    my $mode  = shift;
+
     my $self  = {};
 
     bless($self);
@@ -181,10 +183,17 @@ sub new {
     $self->{contact}      = '';     # as sent with PUBLISH
     $self->{priority}     = '';     # prio for this contact, no prio on default
 
-    $self->{exec_notify}  = ''; # what program to run when a notify is received
-    $self->{exec_open}    = ''; # what program to run when a status open is received
-    $self->{exec_closed}  = ''; # what program to run when status closed
-    $self->{exec_changed} = ''; # what program to run when status changed
+    # what program to run when a notify is received, for each supported 
+    # event package
+
+    $self->{'exec_presence'}  = '';
+    $self->{'exec_presence.winfo'} = '';
+    $self->{'exec_presence.winfo.winfo'} = '';
+
+    $self->{'exec_xml'}           = '';      # same for any NOTIFY body
+    $self->{'exec_xml_presence'}  = '';      # for dedicated xml files (pidf)
+    $self->{'exec_xml_presence.winfo'} = ''; # and watcherinfo.xml
+    $self->{'exec_xml_presence.winfo.winfo'} = '';
 
     $self->{register}  = 0;        # set by the comand line options in case we 
                                    # have to register
@@ -215,47 +224,66 @@ sub new {
     $self->{help}      = 0;  # to get the option -h
     $self->{debug}     = 1;  # to control the amount of log messages 
 
-    my $result = GetOptions('register|r'         => \$self->{register},
-			    'subscribe|s'        => \$self->{subscribe},
-			    'event-package|ep=s' => \$self->{event_package},
-			    'publish|p'          => \$self->{publish},
-			    'message|m=s'        => \$self->{message},
-			    'my-sip-id|my-id|i=s'=> \$self->{my_id},
-			    'my-name=s'          => \$self->{my_name},
-			    'local-port|lp=i'    => \$self->{local_port},
-			    'remote-port|rp=i'   => \$self->{remote_port},
-			    'proxy|x=s'          => \$self->{proxy},
-			    'debug|d=i'          => \$self->{debug},
-			    'version'            => \$self->{version},
-			    'help'               => \$self->{help},
-			    'options'            => \$self->{options},
-			    'status=s'           => \$self->{basic_status},
-			    'contact|c=s'        => \$self->{contact},
-                            'priority=s'         => \$self->{priority},
-			    'note=s'             => \$self->{note},
-			    'watch-id|w=s'       => \$self->{watch_id},
-			    'subscribe-exp|se=i' => \$self->{subscribe_exp},
-			    'publish-exp|pe=i'   => \$self->{publish_exp},
-			    'register-exp|re=i'  => \$self->{register_exp},
-                            'message-exp|me=i'   => \$self->{msg_exp},
-			    'publish-once|po'    => \$self->{publish_once},
-			    'register-once|ro'   => \$self->{register_once},
-                            'notify-once|no'     => \$self->{notify_once},
-			    'my-host=s'          => \$self->{my_host},
-			    'registrar|rs=s'     => \$self->{registrar},
-			    'domain|do=s'        => \$self->{domain},
-			    'exec-notify|en=s'   => \$self->{exec_notify},
-			    'exec-open|eo=s'     => \$self->{exec_open},
-			    'exec-closed|ec=s'   => \$self->{exec_closed},
-			    'exec|e=s'           => \$self->{exec_changed},
-			    'username|u=s'       => \$self->{username},
-			    'password|pw=s'      => \$self->{password},
-			    'login=s'            => \$self->{login},
-			    'trace'              => \$self->{trace},
-                            'msg-to-id|mt=s'     => \$self->{msg_to},
-                            'msg-receive|mr'     => \$self->{msg_receive},
-			    'testing'            => \$self->{testing}
+    my $result = GetOptions(
+	   'register|r'         => \$self->{register},
+           'subscribe|s'        => \$self->{subscribe},
+	   'event-package|ep=s' => \$self->{event_package},
+	   'publish|p'          => \$self->{publish},
+	   'message|m=s'        => \$self->{message},
+           'my-sip-id|my-id|i=s'=> \$self->{my_id},
+	   'my-name=s'          => \$self->{my_name},
+	   'local-port|lp=i'    => \$self->{local_port},
+	   'remote-port|rp=i'   => \$self->{remote_port},
+	   'proxy|x=s'          => \$self->{proxy},
+	   'debug|d=i'          => \$self->{debug},
+	   'version'            => \$self->{version},
+	   'help'               => \$self->{help},
+	   'options'            => \$self->{options},
+	   'status=s'           => \$self->{basic_status},
+	   'contact|c=s'        => \$self->{contact},
+           'priority=s'         => \$self->{priority},
+	   'note=s'             => \$self->{note},
+	   'watch-id|w=s'       => \$self->{watch_id},
+	   'subscribe-exp|se=i' => \$self->{subscribe_exp},
+	   'publish-exp|pe=i'   => \$self->{publish_exp},
+	   'register-exp|re=i'  => \$self->{register_exp},
+           'message-exp|me=i'   => \$self->{msg_exp},
+	   'publish-once|po'    => \$self->{publish_once},
+	   'register-once|ro'   => \$self->{register_once},
+           'notify-once|no'     => \$self->{notify_once},
+	   'my-host=s'          => \$self->{my_host},
+	   'registrar|rs=s'     => \$self->{registrar},
+	   'domain|do=s'        => \$self->{domain},
+
+	   'exec-presence|eprs=s' 
+	                        => \$self->{'exec_presence'},
+	   'exec-presence-winfo|epw=s' 
+	                        => \$self->{'exec_presence.winfo'},
+	   'exec-presence-winfo-winfo|epww=s' 
+	                        => \$self->{'exec_presence.winfo.winfo'},
+
+	   'exec-body|eb=s'     => \$self->{'exec_xml'},
+	   'exec-body-presence|ebp=s' 
+	                        => \$self->{'exec_xml_presence'},
+	   'exec-body-presence-winfo|ebpw=s' 
+	                        => \$self->{'exec_xml_presence.winfo'},
+	   'exec-body-presence-winfo-winfo|ebpww=s' 
+	                        => \$self->{'exec_xml_presence.winfo.winfo'},
+
+           'username|u=s'       => \$self->{username},
+	   'password|pw=s'      => \$self->{password},
+	   'login=s'            => \$self->{login},
+	   'trace'              => \$self->{trace},
+           'msg-to-id|mt=s'     => \$self->{msg_to},
+           'msg-receive|mr'     => \$self->{msg_receive},
+	   'testing'            => \$self->{testing}
 			   );
+
+    if (defined $mode and $mode eq 'testing') {
+	$self->{testing} = 1;
+	# skip all checks
+	return $self;
+    }
 
     # many sanity checks
 
@@ -289,7 +317,8 @@ sub new {
     }
 
     unless ($self->{basic_status} eq 'open' || $self->{basic_status} eq 'closed') {
-        $log->write(WARN, "Warning: basic status field value '$self->{basic_status}' ".
+        $log->write(WARN, "$SIP_USER_AGENT Warning: basic status field value ".
+		    "'$self->{basic_status}' ".
 		    "is not covered by RFC 3863, 'open' or 'closed' is expected.");
     }
 
@@ -475,7 +504,8 @@ Subscribe options, use in combination with -s:
 
   -ep, --event-package=pckg: To specify which kind of information 
     should be subscribed on. Supported values for pckg are: 
-    presence, presence.winfo, presence.winfo.winfo
+    presence (default), presence.winfo, presence.winfo.winfo. Other
+    values are accepted, but the result will not be parsed.
 
 Register options, in combination with -r:
 
@@ -535,28 +565,24 @@ Continuation of options for pua.pl
   -rp, --remote-port=number: Port number of the SIP proxy, i.e. where 
     to send SIP messages on the remote machine. Default is 5060
 
-  -en, --exec-notify=cmd: Run cmd each time a notification of
-    somebody's else presence status is received. Works only in 
-    combination with -s (subscribe). The command gets a descriptive
-    description of the status on stdin. Example: -en 'cat > /tmp/pres'
+  --exec-<pckg>=cmd: Run cmd each time a notification of somebody's 
+    <pckg> status is received. Works only in combination with -s 
+    (subscribe). The command gets a descriptive description of the 
+    status on stdin. Example: --exec-presence 'cat > /tmp/pres'
     will re-write the file /tmp/pres each time the server sends a
     notification about the watched presentity. The file /tmp/pres
-    then contains a text like 'xyz open for communication'. See the
-    other --exec optiions for less descriptive methods. Please note:
-    depending on the server settings and on -re, cmd might be 
-    executed quite often.
+    then contains a text like 'xyz open for communication'. 
+    Possible values for <pckg> are: presence (-eprs), presence.winfo
+    (-epw) and presence.winfo.winfo (-epww). To get the plain 
+    information without previoiusly parsing, use the options
+    --exec-body-<pckg>. Please note: depending on the server 
+    settings, cmd might be executed quite frequently.
 
-  -eo, --exec-open=cmd: Run cmd each time a basic presence status 
-    changes to open. The command cmd is invoked with a number of 
-    switches on its own: -e entity name (usually a address in form
-    sip:me@somwhere.net), -s status, here 'open', -c contact address, 
-    -p priority, -t timestamp. A switch may be omitted, in case the 
-    information is not available. Additionally, cmd may get on its 
-    stdin an multi-line note. Cmd is invoked for each tuple, i.e. 
-    it might be called more than once for one entity.
-
-  -ec, --exec-closed=cmd: As -eo, but here the status has to change
-    from open to closed (or from open to not available).
+  --exec-body-<pckg>=cmd: Same as --exec-<pckg>, but here the plain
+    body of the notification is passed to cmd on stdin. Supported
+    values for <pckg> are: presence (-ebprs), presence.winfo
+    (-ebpw) and presence.winfo.winfo (-ebpww). --exec-body is also
+    supported, for any event package.
 
   -ro, --register-once: Register only once and then exit (assuming
     no -s/-p given). This is expected in combination with -r. If

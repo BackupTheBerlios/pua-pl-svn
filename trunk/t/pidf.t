@@ -8,12 +8,21 @@ use Test::More 'no_plan';
 use lib '..';
 use Log::Easy;
 
-require "../pidf.pm";
+use Pidf;
 
 my $log = new Log::Easy;
-$log->log_level(SPEW);#INFO);#TRACE);
+$log->log_level(INFO);#TRACE);
 $log->prefix('');
 
+my $options = new Options($log, 'testing');
+
+
+# test object
+my $pidf = new Pidf($log, $options);
+
+is ($pidf->get_content_type(), 'application/pidf+xml',
+    'pidf: using correct content type');
+is ($pidf->get_name(), 'presence', 'pidf: using correct package name');
 
 
 ################# taken the examples from RFC 3863 ##########################
@@ -36,10 +45,9 @@ my $expected = 'Presence information for pres:someone@example.com:
     using address: tel:+09012345678
 ';
 
-my $res;
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'using a namespace');
+my $res = $pidf->parse($doc);
+is($res, $expected, 'pidf: using a namespace');
 
 #############################################################################
 
@@ -53,8 +61,8 @@ $doc = '<?xml version="1.0" encoding="UTF-8"?>
        <contact priority="0.8">tel:+09012345678</contact>
      </tuple></presence>';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'using a default XML namespace');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: using a default XML namespace');
 
 #############################################################################
 
@@ -76,8 +84,8 @@ $expected = 'Presence information for pres:someone@example.com:
     using address: im:someone@example.com
 ';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'including a location status');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: including a location status');
 
 #############################################################################
 
@@ -114,13 +122,13 @@ $expected = 'Presence information for pres:someone@example.com:
     Ne derangez pas, s\'il vous plait
     timestamp: 2001-10-27T16:49:29Z
   available and online
-    prioity of this way of communication: 1.0 (prefered!)
+    prioity of this way of communication: 1.0 (prefered)
     using address: mailto:someone@example.com
   note: I\'ll be in Tokyo next week
 ';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'default namespace with status extension');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: default namespace with status extension');
 
 #############################################################################
 
@@ -150,12 +158,12 @@ $expected = 'Presence information for pres:someone@example.com:
     prioity of this way of communication: 0.65
     using address: tel:+09012345678
   available and online
-    prioity of this way of communication: 1.0 (prefered!)
+    prioity of this way of communication: 1.0 (prefered)
     using address: im:someone@mobilecarrier.net
 ';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'own namespace with other extensions');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: own namespace with other extensions');
 
 #############################################################################
 
@@ -182,8 +190,8 @@ $expected = 'Presence information for pres:someone@example.com:
     using address: tel:+09012345678
 ';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'mandatory to understand elements');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: mandatory to understand elements');
 
 
 #############################################################################
@@ -201,8 +209,8 @@ $doc = '<?xml version="1.0"?>
 
 $expected = '';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'lpidf document');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: lpidf document');
 
 #############################################################################
 
@@ -232,8 +240,8 @@ sub callback {
     is ($timestamp, '1795-10-27T16:49:29Z', 'Callback2 arg timestamp');
     is ($cb_arg, 'Hammelswade', 'Callback2 arg arg');
 }
-
-pidf::pidf_parse($doc, $log, undef, undef, \&callback, 'Hammelswade');
+# todo: test template filling with the found elements
+# pidf::pidf_parse($doc, $log, undef, undef, \&callback, 'Hammelswade');
 
 #############################################################################
 
@@ -256,6 +264,6 @@ $expected = 'Presence information for sip:yivi@pals.internet2.edu:
     using address: sip:conny@garbo
 ';
 
-pidf::pidf_parse($doc, $log, sub{ $res = $_[0]; });
-is($res, $expected, 'including geopriv');
+$res = $pidf->parse($doc);
+is($res, $expected, 'pidf: including geopriv');
 

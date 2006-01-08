@@ -31,7 +31,6 @@ this means, read on with section intro.<p>
 	<li><a href="#s">Subscribe</a></li>
 	<li><a href="#p">Publish</a></li>
 	<li><a href="#o">Advanced Options</a></li>
-	<li><a href="#e">More on --exec</a></li>
 	<li><a href="#d">Download and Install</a></li>
 </ol><p>
 
@@ -183,7 +182,7 @@ Sometimes you can only subscribe when you are registered. Then both
 Whenever the server sends some information about Uli's presence, pua.pl
 prints it on the console. For cases where this is not sufficient, it is
 possible to pass a command to pua.pl, which is then executed. See 
-<code>--exec-notify</code> below.<p>
+<code>--exec-presence</code> below.<p>
  
 It is not possible to subscribe to more than one sip-id, i.e. pua.pl can 
 be called only with one -w parameter. However you can invoke more than
@@ -270,28 +269,27 @@ ron@p5499A632.dip.t-dialin.net for instant messaging:<p>
   <code>-rp, --remote-port=number</code> Port number of the SIP proxy, i.e. where 
     to send SIP messages on the remote machine. Default is 5060.<p>
 
-  <code>-en, --exec-notify=cmd</code> Run cmd each time a notification of
-    somebody's else presence status is received. Works only in 
-    combination with <code>-s</code> (subscribe). The command gets a descriptive
-    description of the status on stdin. Example: <code>-en 'cat &gt; /tmp/pres'</code>
+  <code>--exec-<i>[pckg]</i>=cmd</code> 
+    Run cmd each time a notification of somebody's [pckg] status is 
+    received. Works only in combination with <code>-s</code>
+    (subscribe). The command gets a descriptive description of the 
+    status on stdin. Example: <code>--exec-presence 'cat &gt; /tmp/pres'</code>
     will re-write the file /tmp/pres each time the server sends a
     notification about the watched presentity. The file /tmp/pres
-    then contains a text like 'xyz open for communication'. See the
-    other <code>--exec</code> optiions for less descriptive methods. Please note:
-    depending on the server settings and on <code>-re</code>, cmd might be 
-    executed quite often.<p>
+    then contains a text like 'xyz open for communication'. 
+    Possible values for [pckg] are: presence (<code>-eprs</code>), 
+    presence.winfo (<code>-epw</code>) and presence.winfo.winfo 
+    (<code>-epww</code>). To get the plain 
+    information without previoiusly parsing, use the options
+    <code>--exec-body-[pckg]</code>. Please note: depending on the server 
+    settings, cmd might be executed quite frequently.<p>
 
-  <code>-eo, --exec-open=cmd</code> Run cmd each time a basic presence status 
-    changes to open. The command cmd is invoked with a number of 
-    switches on its own: <code>-e</code> entity name (usually a address in form
-    sip:me@somwhere.net), <code>-s</code> status, here 'open', <code>-c contact address, 
-    -p priority, -t timestamp</code>. A switch may be omitted, in case the 
-    information is not available. Additionally, cmd may get on its 
-    stdin an multi-line note. Cmd is invoked for each tuple, i.e. 
-    it might be called more than once for one entity.<p>
-
-  <code>-ec, --exec-closed=cmd</code> As <code>-eo</code>, but here the status has to change
-    from open to closed (or from open to not available).<p>
+  <code>--exec-body-[pckg]=cmd</code> Same as <code>--exec-[pckg]</code>, 
+    but here the plain body of the notification is passed to cmd on 
+    standard input. Supported values for [pckg] are: 
+    presence (<code>-ebprs</code>), presence.winfo (<code>-ebpw</code>) 
+    and presence.winfo.winfo (<code>-ebpww</code>). <code>--exec-body</code> 
+    is also supported, for any event package.<p>
 
   <code>-ro, --register-once</code> Register only once and then exit (assuming
     no <code>-s/-p given</code>). This is expected in combination with <code>-r</code>. If
@@ -312,52 +310,6 @@ ron@p5499A632.dip.t-dialin.net for instant messaging:<p>
   <code>-d, --debug=n</code> Set the debug level, values of n: 0 (quiet) up to
     5 (very noisy)<p>
 </div>
-
-<h3><a name="e">More on --exec</a></h3>
-
-  For example, the program 'myprog' shall call everytime the presence 
-  changes to open, then pua.pl is called with switch <code>--exec-open 'myprog'</code>. 
-  Now, if the watched person (having for instance the sip address 
-  sip:joseph@sipserv.de) goes online using the contact address 
-  im:jo@jupm.org with the prio 0.5, the command 'myprog' will be called 
-  like this:<p>
-  
-<div class="item"><code>
-    myprog -e sip:joseph@sipserv.de -s open -c im:jo@jupm.org -p 0.5<p>
-</code></div>
-
-  The arguments for cmd are always in the same order, but only the first 2 are 
-  always present (<code>-e, -s</code>). The watched person can specify more than one contact
-  address, he/she uses. For instance, Jo also has given an email address 
-  mailto:jo@yahoo.com, and Jo actually preferes to be contacted by email, as
-  he is busy with a meeting. So he sets the priority of the email to 1, and 
-  additionally gives a note "Preferably after 8 o'clock" to his im: address.
-  With this setup, pua.pl will call myprog twice, as follows:<p>
-  
-<div class="item"><code>
-    myprog -e sip:joseph@sipserv.de -s open -c mailto:jo@yahoo.com -p 1<br>
-    myprog -e sip:joseph@sipserv.de -s open -c im:jo@jupm.org -p 0.5<p>
-</code></div>
- 
-  The second call to myprog gets the text "Preferably after 8 o'clock" piped on 
-  stdin. The arguments to myprog are simply appended, so if you wish to use
-  redirection like <code>--exec-open 'echo &gt; /tmp/t1'</code>, it will not work as expected.
-  Instead, it will call <code>"echo &gt; /tmp/t1 -e sip:joseph@sipserv.de..."</code><p>
-
-  The last argument <code>-t timestamp</code> usually gives the time when the presence 
-  information was created, it should be coded using IMPP datetime format 
-  [RFC3339], a valid value would be 2005-06-21T16:49:29Z.<p>
-
-  Unlike the other <code>--exec</code> options, pua.pl called with <code>--exec-notify=cmd</code>
-  will cause cmd called everytime a notification is received. For example, running
-  the program like this<p>
-  
-<div class="item"><code>
-    pua.pl -en 'xmessage -file -' -s -watch sip:betty@srv.net ...<p>
-</code></div>
-
-  will invoke xmessage on each notificaton, i.e. it shows a X window with
-  a string indicating the status of Betty.<p>
 
 
 <h3><a name="d">Download and Installation</a></h3>

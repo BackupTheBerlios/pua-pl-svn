@@ -580,7 +580,7 @@ sub init_subscribe_tests {
 	my $l = get_header('To', $input);
 	is($l, 'To: sip:nobody@nowhere.com', 'SUBSCRIBE to header is ok');
 
-        system ('testpua.sh -rp 5059 -s -my-id=sip:nosy@somesi.te -my-name=Nosy -w=im:star@home.com -ep presence');
+        system ('testpua.sh -rp 5059 -s -my-id=sip:nosy@somesi.te -my-name=Nosy -w=im:star@home.com');
     }
     elsif ($heap->{'int_cnt'} == 7) {
 	my $l = get_header('From', $input);
@@ -604,9 +604,10 @@ sub init_subscribe_tests {
 	$kernel->post('test-server' => 'continue' => $input => $content);
     }
     $heap->{'int_cnt'}++;
-      
+
 }
-      
+
+
 
 #
 # more subscribe specific tests: 
@@ -957,43 +958,32 @@ sub notify_tests {
 
     if ($heap->{'int_cnt'} == 0) {
         $answer = $subs_ok_answer;
-	`rm /tmp/t3`;
-	`rm /tmp/t4`;
 	`rm /tmp/t2`;
 	`rm /tmp/t1`;
-        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -se 30 -en \'cat>/tmp/t2\' -ec t/testexec3.sh -eo t/testexec4.sh --exec t/testexec1.sh -i=sip:me@exec.test');
-
+        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -se 30 '.
+		'--exec-presence \'cat>/tmp/t2\' '.
+		'--exec-body-presence \'cat>/tmp/t1\' -i=sip:me@exec.test');
     }
     elsif ($heap->{'int_cnt'} == 1) {
 	$kernel->delay('send_udp_message', 2,
-		       get_notify('closed'));
+		       get_notify('presence', 'closed'));
 	$kernel->delay('continue', 3);
     }
     elsif ($heap->{'int_cnt'} == 3) {
 
         my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*not available or not online/s,
-	  'NOTIFY: exec-notify worked');
+	  'NOTIFY: exec-presence worked for close');
 
-	my $c = `cat /tmp/t3`;
-	chomp $c;
-        # the -- comes from echo
-	is($c, '-- -e sip:user@192.168.123.2 -s closed -c tel:+12345 -p 1.0 -t 2001-10-27T16:49:29Z',
-	   'NOTIFY: exec-closed worked');
-
-        if (-e '/tmp/t4') {
-	    ok(0, 'NOTIFY: exec-open should not be called');
-	} else {
-	    ok(1, 'NOTIFY: exec-open should not be called');
-	}
-
-	ok(-e '/tmp/t1', 'NOTIFY: exec called');
+	my $c = `cat /tmp/t1`;
+	my $e = get_notify_body('presence', 'closed');
+        $e  =~ s/\015//s;  # remove ^M
+	is($c, $e, 'NOTIFY: exec-body-presence worked for closed');
 
 	`rm /tmp/t1`;
 	`rm /tmp/t2`;
-	`rm /tmp/t3`;
 
-        my $nm = get_notify('open');
+        my $nm = get_notify('presence', 'open');
         $nm = substr($nm, 0, -2); # remove trailing CRLF
 
 	$kernel->delay('send_udp_message', 2, $nm);
@@ -1002,50 +992,52 @@ sub notify_tests {
 
 	my $pres = `cat /tmp/t2`;
 	like($pres, qr/Presence information for sip:user${AT}192.168.123.2:\s*available and online/s,
-	  'NOTIFY: exec-notify worked');
+	  'NOTIFY: exec-presence worked for open');
 
-	my $c = `cat /tmp/t4`;
-	chomp $c;
-        # the -- comes from echo
-	is($c, '-- -e sip:user@192.168.123.2 -s open -c tel:+12345 -p 1.0 -t 2001-10-27T16:49:29Z',
-	   'NOTIFY: exec-open worked');
+	my $c = `cat /tmp/t1`;
+	my $e = get_notify_body('presence', 'open');
+        $e  =~ s/\015//s;  # remove ^M
+	is($c, $e, 'NOTIFY: exec-body-presence worked for open');
 
-        if (-e '/tmp/t3') {
-	    ok(0, 'NOTIFY: exec-closed should not be called');
-	} else {
-	    ok(1, 'NOTIFY: exec-closed should not be called');
-	}
-
-	ok(-e '/tmp/t1', 'NOTIFY: exec called again');
-
-	`rm /tmp/t1 /tmp/t2 /tmp/t3 /tmp/t4`;
+	`rm /tmp/t1 /tmp/t2`;
 	$kernel->delay('send_udp_message', 2,
-		       get_notify('open'));
+		       get_notify('presence', 'open', 'nota bene'));
     }
     elsif ($heap->{'int_cnt'} == 5) {
-	ok(!(-e '/tmp/t1'), 'NOTIFY: exec not called when no status change');
-	ok(!(-e '/tmp/t3'), 'NOTIFY: exec-closed not called when no status change');
-	ok(!(-e '/tmp/t4'), 'NOTIFY: exec-open not called when no status change');
-	ok(-e '/tmp/t2', 'NOTIFY: exec-notify called when no status change');
-
-	`rm /tmp/t1 /tmp/t2 /tmp/t3 /tmp/t4`;
-	$kernel->delay('send_udp_message', 2,
-		       get_notify('open', 'nota bene'));
-    }
-    elsif ($heap->{'int_cnt'} == 6) {
         my $l = get_header('Via', $input);
 	#like($l, qr/received=127.0.0/, 'NOTIFY: received param in 200 reply found');
 
-	ok(-e '/tmp/t1', 'NOTIFY: exec called when note change');
-	ok(!(-e '/tmp/t3'), 'NOTIFY: exec-closed not called when note change');
-	ok(!(-e '/tmp/t4'), 'NOTIFY: exec-open not called when note change');
+	ok(-e '/tmp/t1', 'NOTIFY: exec-body-presence called when note change');
+	ok(-e '/tmp/t2', 'NOTIFY: exec-presence called when note change');
+	`rm /tmp/t1 /tmp/t2`;
+        `killall -HUP pua.pl`;
+    }
+    elsif ($heap->{'int_cnt'} == 6) {
+
+        # again, for tests of unknown package
+        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -se 30 '.
+		'--exec-body \'cat>/tmp/t1\' -i=sip:me@exec.test -ep fancy');
+
     }
     elsif ($heap->{'int_cnt'} == 7) {
+        # must not have an accept header
+	my $l = get_header('Accept', $input);
+	is($l, undef, 'SUBSCRIBE accept header omitted');
 
-	$kernel->delay('send_udp_message', 2, 'INVITE sip:conny@192.168.123.2 SIP/2.0'.$CRLF.$CRLF);        
-        # $answer = $subs_fail_answer; # in order to stop the running process
+	$kernel->delay('send_udp_message', 2, get_notify('fancy'));
+	$kernel->delay('continue', 3);
     }
     elsif ($heap->{'int_cnt'} == 8) {
+	my $c = `cat /tmp/t1`;
+	my $e = get_notify_body('fancy')."\n";
+        $e =~ s/\015//s;  # remove ^M
+	is($c, $e, 'NOTIFY: exec-body worked for any package');
+	`rm /tmp/t1`;
+
+	# $kernel->delay('send_udp_message', 2, 
+	#       'INVITE sip:conny@192.168.123.2 SIP/2.0'.$CRLF.$CRLF);
+        # $answer = $subs_fail_answer; # in order to stop the running process
+
         # like($input, qr/501 not implemented/i, "INVITE correctly rejected");
         $_[KERNEL]->delay('continue', 2); # should not send anything
         `killall -HUP pua.pl`;
@@ -1063,29 +1055,31 @@ sub subscription_state_tests {
     if ($heap->{'int_cnt'} == 0) {
         $answer = $subs_ok_answer;
         `rm /tmp/t2`; # left overs from previous run
-        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -no -se 20 -i=sip:me@exec.test -en \'cat>/tmp/t2\'');
+        system ('testpua.sh -rp 5059 -watch sip:freak@show.de -s -no -se 20 -i=sip:me@exec.test -eprs \'cat>/tmp/t2\'');
     } elsif ($heap->{'int_cnt'} == 1) {
         $kernel->delay('send_udp_message', 2,
-                       get_notify('open', undef, "terminated; reason=timeout"));
+                       get_notify('presence', 'open', undef, 
+				  "terminated; reason=timeout"));
         $kernel->delay('continue', 3);
 
     } elsif ($heap->{'int_cnt'} == 2) {
         my $pres = `cat /tmp/t2`;
         `rm /tmp/t2`; 
         like($pres, qr/Presence information for sip:user${AT}192.168.123./s,
-             'NOTIFY: exec-notify worked with Subscription-State');
+             'NOTIFY: exec-presence worked with Subscription-State');
 
         # again with long expiry on command line
         system ('testpua.sh -rp 5059 -w sip:freak@show.de -s -se 2000 -i=sip:me@exec.test');
     } elsif ($heap->{'int_cnt'} == 3) {
         $kernel->delay('send_udp_message', 2,
-                       get_notify('open', undef, "active; expires=10"));
+                       get_notify('presence', 'open', undef, "active; expires=10"));
     } elsif ($heap->{'int_cnt'} == 4) {
         my $l = get_header('CSeq', $input);
         is($l, 'CSeq: 2 SUBSCRIBE', 
                'NOTIFY: considers expires param in Subscription-State header');
         $kernel->delay('send_udp_message', 2,
-                       get_notify('open', undef, "terminated; retry-after=10"));
+                       get_notify('presence', 'open', undef, 
+				  "terminated; retry-after=10"));
     } elsif ($heap->{'int_cnt'} == 5) {
         my $l = get_header('CSeq', $input);
         is($l, 'CSeq: 3 SUBSCRIBE',
@@ -1100,7 +1094,7 @@ sub subscription_state_tests {
         
     } elsif ($heap->{'int_cnt'} == 7) {
         $kernel->delay('send_udp_message', 2,
-                       get_notify('open', undef, "terminated; reason=fired"));
+                       get_notify('presence', 'open', undef, "terminated; reason=fired"));
         $kernel->delay('continue', 20);
     } elsif ($heap->{'int_cnt'} == 8) {
         # there shouldn't be any message sent
@@ -1171,22 +1165,8 @@ sub init_message_tests {
 # parameters are: basic status, optional note, optional subscription state 
 # header.
 sub get_notify {
-    my ($c, $n, $s) = @_;
-    my $content = '<?xml version="1.0"?>
-<!DOCTYPE presence PUBLIC "//IETF//DTD RFCxxxx PIDF 1.0//EN" "pidf.dtd">
-<presence entity="sip:user@192.168.123.2">
-<tuple id="9r28r49">
-  <status>
-    '."<basic>$c</basic>";
-    if (defined $n) {
-	$content .= "<note>$n</note>\n";
-    }
-    $content .= "<contact priority=\"1.0\">tel:+12345
-</contact><timestamp>
-2001-10-27T16:49:29Z</timestamp></status>
-</tuple>
-</presence>".$CRLF;
-
+    my ($pck, $c, $n, $s) = @_;
+    my $content = get_notify_body($pck, $c, $n);
     my $ret = 
            'NOTIFY sip:conny@192.168.123.2 SIP/2.0'.$CRLF.
            'Via: SIP/2.0/UDP vertigo:5060;branch=z9hG4bK10351112082863@vertigo'.$CRLF;
@@ -1195,6 +1175,37 @@ sub get_notify {
     }
     $ret .= 'Content-Length: '.length($content).$CRLF.$CRLF.$content;
     return $ret;
+}
+
+
+#
+# return a notify message body
+# parameters are: event package, basic status (for presence), 
+#                 optional note (for presence)
+
+sub get_notify_body {
+    my ($pck, $c, $n) = @_;
+    my $body;
+    if ($pck eq 'presence') {
+	$body = '<?xml version="1.0"?>
+<!DOCTYPE presence PUBLIC "//IETF//DTD RFCxxxx PIDF 1.0//EN" "pidf.dtd">
+<presence entity="sip:user@192.168.123.2">
+<tuple id="9r28r49">
+  <status>
+    '."<basic>$c</basic>";
+	if (defined $n) {
+	    $body .= "<note>$n</note>\n";
+	}
+	$body .= "<contact priority=\"1.0\">tel:+12345
+</contact><timestamp>
+2001-10-27T16:49:29Z</timestamp></status>
+</tuple>
+</presence>".$CRLF;
+
+    } elsif ($pck eq 'fancy') {
+	$body = "‰¸ˆƒ‹÷ﬂ";
+    }
+    return $body;
 }
 
 #

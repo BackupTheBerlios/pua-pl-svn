@@ -1,13 +1,12 @@
+package Pidf;
 
-# a simple parser for pidf documents, see RFC-3863
 #
-# part of pua.pl
-# a simple presence user agent, 
+# An Event Package for pidf documents, see RFC-3863
+#
+# part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
 #
-# $Date$, Conny Holzhey
-
-package pidf;
+# $Date:$ Conny Holzhey
 
 
 use warnings;
@@ -16,8 +15,38 @@ use strict;
 use XML::Parser;        # to parse pidf documents
 
 use lib qw(.);          # the libs below are local, so allow to load them
-use Log::Easy qw(:all); # for logging, got it from cpan
+use Log::Easy qw(:all); # for logging
+use Options;            # to handle default options and the command line
 
+use EventPackage;       # super class
+use vars qw(@ISA);
+@ISA = qw(EventPackage);
+
+
+
+#
+# Constructor
+
+sub new {
+    my $class        = shift;
+
+    my $self         = {};
+    bless($self);
+
+    $self->{log}     = shift;      # reference to the log object
+    $self->{options} = shift;      # reference to the options object
+
+    $self->{content_type} = 'application/pidf+xml'; 
+    $self->{name}         = 'presence'; # package name
+
+    $self->{log}->write(DEBUG, "presence: new");
+    return $self;
+}
+
+
+
+
+# global variables, mainly internal states of the xml parser
 
 
 # global variables, internal states of the pidf parser
@@ -26,46 +55,34 @@ my $pidf_tag;      # the last tag name identified
 my %pidf_info;     # the collected info
 my $log;           # of type Log::Easy
 my $out;           # a text decribing the pidf
-my $callback1;     # specified by the caller, called with the descriptive 
-                   # result of parsing, usually to be printed
-my $callback2;     # specified by the caller, called with the result of parsing,
-                   # this time in form of a list
-my $cb_arg1;       # to give the app a chance to pass state info to the callback1
-my $cb_arg2;       # to give the app a chance to pass state info to the callback2
-
 my $entity;        # entity name found inf the pidf document
 
+
+
 #
-# parse the pidf document, as it came with the NOTIFY message.
+# parse the presence pidf document, as it came with the NOTIFY message.
 # Run a good-old xml pull parser, which dumps the found elements
 # into the StartTag, EndTag and Text methods. Parameters:
-#
-#   $doc  - the entire document to parse
-#   $l    - reference to the log, see Log::Easy
-#   $cb1  - Callback, gets a descriptive string with a message describing 
-#           what has been found in the pidf document, and $arg1
-#   $arg1 - unchanged passed to $cb1
-#   $cb2  - Callback, gets called for each tuple found in the document
-#           with the following arguments: entity, status, contact, prio,
-#           note, timestamp, arg2. Most of of the arguments can be undef.
-#   $arg2 - unchanged passed to $cb2
+# $self     - object reference
+# $doc      - the entire document to parse
+# $template - where to fill in the findings, TODO
+# Returns a string that describes the received content,
+# or empty string if nothing usefull was found
+sub parse {
+    my ($self, $doc, $template) = @_;
 
-sub pidf_parse {
-    my ($doc, $l, $cb1, $arg1, $cb2, $arg2) = @_;
-
-    $log       = $l;
+    $log       = $self->{log};
     $out       = '';
-    $callback1 = $cb1;
-    $callback2 = $cb2;
-    $cb_arg1   = $arg1;
-    $cb_arg2   = $arg2;
 
     my $parser = new XML::Parser(Style => 'Stream');
-    $parser->setHandlers(Final    => \&handle_final);
+    $parser->setHandlers(Final => \&handle_final);
 
     # the actual interpretatoin is done in the handlers below
     $parser->parse($doc);
+
+    return $out;
 }
+
 
 #
 # handler for the pidf parser, called on each opening XML tag
@@ -168,7 +185,7 @@ sub EndTag {
 		    $prio = $pidf_info{'_priority'};
  	 	    $out .= '    prioity of this way of communication: ' . $prio;
 		    if ($prio == 1) {
-		        $out .= ' (prefered!)';
+		        $out .= ' (prefered)';
 		    }
 		    $out .= "\n";
 		}
@@ -197,15 +214,8 @@ sub EndTag {
             }
 	}
 
-	if (defined $callback2) {
-	    &$callback2($entity, 
-			$status, 
-			$contact, 
-			$prio, 
-			$note,
-			$timestamp,
-			$cb_arg2);	
-	}
+        # TODO: fill in the found values for $entity, $status, $contact, 
+	# $prio, $note,	$timestamp, into the template, if any
 
 	undef %pidf_info; # for the next tuple
     } 
@@ -214,11 +224,10 @@ sub EndTag {
 #
 # handler called when is parsing finished. Call parent CB
 sub handle_final {
-    if (defined $callback1) {
-	&$callback1($out, $cb_arg1);	
-    } else {
-	$log->write(INFO, 'parse: ' . $out);
+    if ($out ne '') {
+	$log->write(INFO, 'presence: parsed ' . $out);
     }
 }
+
 
 1;

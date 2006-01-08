@@ -1,85 +1,104 @@
+package Winfo;
 
-# a parser for watcherinfo documents, see RFC-3858
 #
-# part of pua.pl
-# a simple presence user agent, 
+# An Event Package for watcherinfo documents, see RFC-3858
+#
+# part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
 #
-# $Date$, Conny Holzhey
+# $Date:$ Conny Holzhey
 
-
-package watcherinfo;
 
 use warnings;
 use strict;
 
-use XML::Parser;        # to parse xml documents
+use XML::Parser;        # to parse XML documents
 
 use lib qw(.);          # the libs below are local, so allow to load them
 use Log::Easy qw(:all); # for logging
+use Options;            # to handle default options and the command line
 
-require Exporter;
-
-our(@ISA, @EXPORT);
-@ISA = qw(Exporter);
-@EXPORT = qw(watcherinfo_parse);
-
+use EventPackage;       # super class
+use vars qw(@ISA);
+@ISA = qw(EventPackage);
 
 
 
-# global variables, internal states of the xml parser
+#
+# Constructor
+
+sub new {
+    my $class        = shift;
+
+    my $self         = {};
+    bless($self);
+
+    $self->{log}     = shift;      # reference to the log object
+    $self->{options} = shift;      # reference to the options object
+    $self->{basepackage} = shift; # kind of package that is to be watched
+
+    $self->{content_type} = 'application/watcherinfo+xml'; 
+    $self->{name}         = $self->{basepackage}.'.winfo'; # package name
+
+    $self->{log}->write(DEBUG, $self->{basepackage}.".winfo: new");
+    return $self;
+}
+
+
+
+
+
+# global variables, mainly internal states of the xml parser.
+# Would be nicer to move them into the object, but easier that
+# way, as the parser callbacks use them. So they need to be reset,
+# to avoid problems with several instances
 
 my $winfo_tag;     # the last tag name identified
 my %winfo;         # the collected info for a single watcher entry
 my $winfo_package; # global for the package watched
-my $resource;      # watched resource name found inf the watcher-list statement
+my $resource;      # watched resource name found in the watcher-list statement
 my $log;           # of type Log::Easy
-my $out;           # a text decribing the pidf
+my $out;           # a text decribing the watchers
 my $found;         # set to true if at least 1 watcher exists
-my $callback1;     # specified by the caller, called with the descriptive 
-                   # result of parsing, usually to be printed
-my $callback2;     # specified by the caller, called with the result of parsing,
-                   # this time in form of a list
-my $cb_arg1;       # to give the app a chance to pass state info to the callback1
-my $cb_arg2;       # to give the app a chance to pass state info to the callback2
-
 
 
 #
 # parse the watcherinfo document, as it came with the NOTIFY message.
 # Run a good-old xml pull parser, which dumps the found elements
 # into the StartTag, EndTag and Text methods. Parameters:
-#
-#   $doc  - the entire document to parse
-#   $l    - reference to the log, see Log::Easy
-#   $cb1  - Callback, gets a descriptive string with a message describing 
-#           what has been found in the watcherinfo document, and $arg1
-#   $arg1 - unchanged passed to $cb1
-#   $cb2  - Callback, gets called for each watcher found in the document
-#           with the following arguments: tbd.
-#           Most of of the arguments can be undef.
-#   $arg2 - unchanged passed to $cb2
+# $self     - object reference
+# $doc      - the entire document to parse
+# $template - where to fill in the findings, TODO
+# Returns a string that describes the received document, or an empty
+# string case nothing was found, or invalid document was passed.
+sub parse {
+    my ($self, $doc, $template) = @_;
 
-sub watcherinfo_parse {
-    my ($doc, $l, $cb1, $arg1, $cb2, $arg2) = @_;
-
-    $log       = $l;
-    $out       = '';
-    $callback1 = $cb1;
-    $callback2 = $cb2;
-    $cb_arg1   = $arg1;
-    $cb_arg2   = $arg2;
-    $found     = 0;
+    $log           = $self->{log};
+    $out           = '';
+    $found         = 0;
+    %winfo         = (); # empty list
+    $winfo_package = undef;
+    $winfo_tag     = undef;
+    $resource      = undef;
 
     my $parser = new XML::Parser(Style => 'Stream');
-    $parser->setHandlers(Final    => \&watcherinfo_handleFinal);
+    $parser->setHandlers(Final => \&watcherinfo_handleFinal);
 
     # the actual interpretatoin is done in the handlers below
     $parser->parse($doc);
+
+    if ($self->{basepackage} eq $winfo_package) {
+        return $out;
+    } else {
+        return ''; # it was not for me
+    }
 }
 
+
 #
-# handler for the pidf parser, called on each opening XML tag
+# handler for the winfo parser, called on each opening XML tag
+# not exported, and it is not a method, therefor using global vars
 
 sub StartTag {
     shift;
@@ -129,7 +148,8 @@ sub StartTag {
 sub Text {
     my $text = $_;
 
-    $log->write(SPEW, "parser: Tag: ", (defined $winfo_tag? $winfo_tag: 'none'), " text $_");
+    $log->write(SPEW, "parser: Tag: ", 
+                (defined $winfo_tag? $winfo_tag: 'none'), " text $_");
 
     if (defined $winfo_tag && $winfo_tag =~ /^watcher$/i) {
 
@@ -168,6 +188,7 @@ sub Text {
     }
 }
 
+
 #
 # handler for the xml parser, called on each closing tag
 
@@ -180,27 +201,23 @@ sub EndTag {
         undef $winfo_tag;
     }
 
-    if (defined($winfo_package)) {
-        undef $winfo_package;
-    }
-
     undef %winfo; # for the next watcher
 }
 
+
 #
 # handler called when is parsing finished. Call parent CB
+
 sub watcherinfo_handleFinal {
-    if (!$found) {
-        $out .= "Not watched by anybody\n";
+
+    unless ($found) {
+        $out .= "  $winfo_package is not watched by anybody\n";
     } else {
         $found = 0;
     }
 
-    if (defined $callback1) {
-	&$callback1($out, $cb_arg1);	
-    } else {
-	$log->write(INFO, 'parse: ' . $out);
-    }
+    $log->write(INFO, $winfo_package.".winfo: $out");
 }
+
 
 1;
