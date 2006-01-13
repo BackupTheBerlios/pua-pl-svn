@@ -2,9 +2,8 @@ package EventPackage;
 
 #
 # abstract class for dealing with the various event packages
-# like presence, presence.winfo, reg, ... responsible for
-# parsing of the corresponding XML documents and triggering
-# actions, depending on the content
+# like presence, presence.winfo, reg. Has a list of objects
+# derived from Document.pm
 #
 # part of pua.pl
 # a simple presence user agent, 
@@ -39,8 +38,7 @@ sub new {
     $self->{log}     = shift;  # reference to the log object
     $self->{options} = shift;  # reference to the options object
 
-    $self->{content_type} = undef; # needs to be overwritten
-    $self->{name}         = undef; # package name, needs to be overwritten
+    $self->{name}    = undef; # package name, needs to be overwritten
 
     bless($self);
     return $self;
@@ -57,14 +55,20 @@ sub get_name {
 
 
 #
-# returns XML document format as it is to be specified
+# returns a list of XML document formats as it is to be specified
 # in the SUBSCRIBE Accept: header, e.g 'application/reginfo+xml'
 
-sub get_content_type {
+sub get_content_types {
     my $self = shift;
+    my @ret = ();
+    my $doc;
 
-    return $self->{content_type};
+    foreach $doc (@{$self->{documents}}) {
+	push @ret, $doc->get_content_type();
+    }
+    return @ret;
 }
+
 
 #
 # this function gets the xml document as received with a NOTIFY
@@ -72,7 +76,20 @@ sub get_content_type {
 # is found in the xml doc, depending whatever it is 
 
 sub parse {
-   my $self = shift;
+    my $self = shift;
+    my $cont = shift;
+    my $content_type = shift;
+    my $doc;
+
+    # look for the matching document parser
+    foreach $doc (@{$self->{documents}}) {
+	if (lc($content_type) eq $doc->get_content_type()) {
+	    return $doc->parse($cont);
+	}
+    }
+    $self->{log}->write(INFO, "EventPackage: no matching doc ".
+			"found for $content_type");
+    return undef;
 }
 
 

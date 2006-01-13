@@ -126,6 +126,20 @@ sub get_ok_reply_msg {
     return $msg;
 }
 
+#
+# return content type, or undef if nothing found
+
+sub get_content_type {
+    my $self = shift;
+    my $headers = shift;
+
+    if ($headers =~ /Content-Type:\s*(.*?)\s/si) {
+	return $1;
+    } else {
+	return undef;
+    }
+}
+
 
 #################### auth stuff #############################################
 

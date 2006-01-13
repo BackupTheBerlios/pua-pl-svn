@@ -1,7 +1,8 @@
-package Winfo;
+package Presence;
 
 #
-# An Event Package for handling xxx.winfo, see RFC-3858
+# An Event Package for handling presence of resources
+# see RFC-3863
 #
 # part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
@@ -17,7 +18,7 @@ use XML::Parser;        # to parse pidf documents
 use lib qw(.);          # the libs below are local, so allow to load them
 use Log::Easy qw(:all); # for logging
 use Options;            # to handle default options and the command line
-use Watcherinfo;
+use Pidf;
 
 use EventPackage;       # super class
 use vars qw(@ISA);
@@ -34,15 +35,15 @@ sub new {
     my $self         = {};
     bless($self);
 
-    $self->{log}         = shift; # reference to the log object
-    $self->{options}     = shift; # reference to the options object
-    $self->{basepackage} = shift; # kind of package that is to be watched
+    $self->{log}     = shift;      # reference to the log object
+    $self->{options} = shift;      # reference to the options object
+    $self->{name}    = 'presence'; # package name
 
-    $self->{name}    = $self->{basepackage}.'.winfo'; # package name
+    my $doc = new Pidf($self->{log}, $self->{options});
 
-    my $doc = new Watcherinfo($self->{log}, $self->{options});
-    push @$self->{documents}, $doc;
-    $self->{log}->write(DEBUG, $self->{name}.": new");
+    push @{$self->{documents}}, $doc;
+
+    $self->{log}->write(DEBUG, "presence: new");
     return $self;
 }
 

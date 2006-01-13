@@ -23,8 +23,8 @@ use Handler;            # super class
 use vars qw(@ISA);
 @ISA = qw(Handler);
 
-use Pidf;     # my own submodule, event package for pidf XML docs
-use Winfo;    # my own submodule, event package for watchinfo docs
+use Presence;    # my own submodule, event package for presence and pidf doc
+use Watcherinfo; # my own submodule, event package for watcherinfo 
 
 
 ###### methods ##############################################################
@@ -46,11 +46,11 @@ sub new {
 
     # create the event package object, sort of if-elsif-factory would do
     if ($self->{package} =~ /^(.*)\.winfo$/) {
-        $self->{event_package} = new Winfo($self->{log}, 
-					   $self->{options}, $1);
+        $self->{event_package} = new Watcherinfo($self->{log}, 
+						 $self->{options}, $1);
     } elsif ($self->{package} eq 'presence') {
-        $self->{event_package} = new Pidf($self->{log}, 
-					  $self->{options});
+        $self->{event_package} = new Presence($self->{log}, 
+					      $self->{options});
     } else {
 	$self->{log}->write(WARN, "$SIP_USER_AGENT Warning: Unknown event package ".
 			    "$self->{package}");
@@ -91,7 +91,12 @@ sub get_msg {
 
     $headers = 'Event: '.$self->{package}.$CRLF;
     if (exists ($self->{event_package})) {
-        $headers .= 'Accept: '.$self->{event_package}->get_content_type().$CRLF;
+	my $ct;
+        my $ep = $self->{event_package};
+	my @cts = $ep->get_content_types();
+	foreach $ct (@cts) {
+	    $headers .= 'Accept: '.$ct.$CRLF;
+	}
     }
     $headers .= 'Expires: '.$expires.$CRLF.
 	        'Contact: <sip:'.$options->{login} . 
@@ -203,7 +208,7 @@ sub control {
 
 	} elsif ($event eq 'subscribed') {
 
-	    # received status okfor a SUBSCRIBE message 
+	    # received status ok for a SUBSCRIBE message 
 	    $self->handle_message(@_);
 	    $ret = 'running';
 
@@ -214,9 +219,18 @@ sub control {
 	    # already out. Parse the info and process it
 
             if (length($content)) {
+
 	        # parse the body, the message content
                 if (exists $self->{event_package}) {
-                    my $cont = $self->{event_package}->parse($content);
+		    my ($ct, $cont);
+		    my $ep = $self->{event_package};
+		    $ct = $self->get_content_type($header);
+
+		    # if no content type was given, we don't know how to parse
+		    if (defined $ct) {
+			$cont = $ep->parse($content, $ct);
+		    } 
+			
                     if (defined $cont and $cont ne '') {
 			$self->{log}->write(WARN, $SIP_USER_AGENT.': '.$cont);
 			$self->run_exec($options->{'exec_'.$self->{package}}, 

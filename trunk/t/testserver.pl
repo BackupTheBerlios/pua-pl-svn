@@ -1170,6 +1170,13 @@ sub get_notify {
     my $ret = 
            'NOTIFY sip:conny@192.168.123.2 SIP/2.0'.$CRLF.
            'Via: SIP/2.0/UDP vertigo:5060;branch=z9hG4bK10351112082863@vertigo'.$CRLF;
+
+    if ($pck eq 'presence') {
+	$ret .= 'Content-Type: APPLICATION/PIDF+XML'.$CRLF;
+    } elsif ($pck =~ /winfo/) {
+	$ret .= 'Content-Type: Application/watcherinfo+xml'.$CRLF;
+    }
+
     if (defined $s) {
         $ret .= 'Subscription-State: '.$s.$CRLF;
     }

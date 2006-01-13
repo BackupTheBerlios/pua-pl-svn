@@ -22,7 +22,7 @@ my $pidf = new Pidf($log, $options);
 
 is ($pidf->get_content_type(), 'application/pidf+xml',
     'pidf: using correct content type');
-is ($pidf->get_name(), 'presence', 'pidf: using correct package name');
+
 
 
 ################# taken the examples from RFC 3863 ##########################

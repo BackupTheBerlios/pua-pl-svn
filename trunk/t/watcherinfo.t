@@ -8,7 +8,7 @@ use Test::More 'no_plan';
 use lib '..';
 use Log::Easy;
 
-use Winfo;
+use Watcherinfo;
 
 my $log = new Log::Easy;
 $log->log_level(INFO);#TRACE);
@@ -18,18 +18,14 @@ my $options = new Options($log, 'testing');
 
 
 # test object #1
-my $pwinfo = new Winfo($log, $options, 'presence');
+my $pwinfo = new Watcherinfo($log, $options, 'presence');
 # test object #2
-my $pwinfo2 = new Winfo($log, $options, 'presence.winfo');
+my $pwinfo2 = new Watcherinfo($log, $options, 'presence.winfo');
 
 is ($pwinfo->get_content_type(), 'application/watcherinfo+xml',
     'winfo: using correct content type');
 is ($pwinfo2->get_content_type(), 'application/watcherinfo+xml',
     'winfo2: using correct content type');
-is ($pwinfo->get_name(), 'presence.winfo', 
-    'winfo: using correct package name');
-is ($pwinfo2->get_name(), 'presence.winfo.winfo', 
-    'winfo2: using correct package name');
 
 
 

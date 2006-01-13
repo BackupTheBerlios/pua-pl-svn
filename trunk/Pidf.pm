@@ -1,7 +1,8 @@
 package Pidf;
 
 #
-# An Event Package for pidf documents, see RFC-3863
+# An module for parsing and interpretation of pidf documents, 
+# see RFC-3863
 #
 # part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
@@ -18,9 +19,9 @@ use lib qw(.);          # the libs below are local, so allow to load them
 use Log::Easy qw(:all); # for logging
 use Options;            # to handle default options and the command line
 
-use EventPackage;       # super class
+use Document;           # super class
 use vars qw(@ISA);
-@ISA = qw(EventPackage);
+@ISA = qw(Document);
 
 
 
@@ -37,9 +38,7 @@ sub new {
     $self->{options} = shift;      # reference to the options object
 
     $self->{content_type} = 'application/pidf+xml'; 
-    $self->{name}         = 'presence'; # package name
-
-    $self->{log}->write(DEBUG, "presence: new");
+    $self->{log}->write(DEBUG, "pidf: new");
     return $self;
 }
 
@@ -65,11 +64,10 @@ my $entity;        # entity name found inf the pidf document
 # into the StartTag, EndTag and Text methods. Parameters:
 # $self     - object reference
 # $doc      - the entire document to parse
-# $template - where to fill in the findings, TODO
 # Returns a string that describes the received content,
 # or empty string if nothing usefull was found
 sub parse {
-    my ($self, $doc, $template) = @_;
+    my ($self, $doc) = @_;
 
     $log       = $self->{log};
     $out       = '';
@@ -90,7 +88,7 @@ sub parse {
 sub StartTag {
     shift;
     my $tag = shift;
-    # $log->write(SPEW, "parser: StartTag $tag");
+    # $log->write(SPEW, "pidf: StartTag $tag");
 
     if ($tag =~ /^(\w+:)?presence$/i) {
         my %e = %_;
@@ -127,7 +125,7 @@ sub StartTag {
 sub Text {
     if (defined($pidf_tag)) {
 
-	# $log->write(SPEW, "parser: Tag: $pidf_tag, text $_");
+	# $log->write(SPEW, "pidf: Tag: $pidf_tag, text $_");
 
         # keep only texts that have non-whitespace content
         unless (/^\s+$/s) {
@@ -156,7 +154,7 @@ sub Text {
 sub EndTag {
     my $tag = $_;
 
-    # $log->write(SPEW, "parser: EndTag $tag");
+    # $log->write(SPEW, "pidf: EndTag $tag");
 
     if (defined($pidf_tag)) {
         undef $pidf_tag;
@@ -222,10 +220,10 @@ sub EndTag {
 }
 
 #
-# handler called when is parsing finished. Call parent CB
+# handler called when is parsing finished. 
 sub handle_final {
     if ($out ne '') {
-	$log->write(INFO, 'presence: parsed ' . $out);
+	$log->write(INFO, 'pidf: parsed ' . $out);
     }
 }
 
