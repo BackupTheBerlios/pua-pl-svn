@@ -7,7 +7,7 @@
 # that it is web based, i.e. running on some remote server.
 # See http://pua-pl.berlios.de for licence
 
-# $LastChangedDate$, Conny Holzhey
+# $Date$, Conny Holzhey
 
 use CGI qw/:standard/;
 use strict;
