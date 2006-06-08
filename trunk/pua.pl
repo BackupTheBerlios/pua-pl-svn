@@ -341,7 +341,7 @@ sub sip_got_message {
 sub sip_send_message {
     my ($heap, $kernel, $msg) = @_;
 
-    if (exists $heap->{'tcp_failed'} && $heap->{'tcp_failed'} > 0) {
+    if ($options->{protocol} eq 'UDP') {
 
         # previous attempt via tcp failed, use udp instead
         $kernel->post( pua => send_udp_message => $msg => 1); 
@@ -385,7 +385,7 @@ sub sip_send_message {
 	        # tcp connection failed, try again with udp
 	        $log->write(INFO, "TCP Connection failed $_[ARG1] in '$_[ARG0]': $_[ARG2]".
 			    " ... will try UDP.");
-		$heap->{'tcp_failed'} = 1;
+		$options->{protocol} = 'UDP';
 	        $_[KERNEL]->post( pua => send_udp_message => $_[HEAP]->{'message'} => 1);
 		
 	    },

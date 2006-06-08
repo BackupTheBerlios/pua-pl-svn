@@ -216,8 +216,9 @@ sub new {
 
     $self->{msg_to}    = ''; # to who send the message
 
-    $self->{testing}   = 0;  # test mode
-    $self->{trace}     = 0;  # trace SIP message
+    $self->{testing}   = 0;      # test mode
+    $self->{trace}     = 0;      # trace SIP message
+    $self->{protocol}  = 'tcp';  # on default TCP
 
     $self->{version}   = 0;  # to get the option -v
     $self->{options}   = 0;  # to get the option --options
@@ -276,6 +277,7 @@ sub new {
 	   'trace'              => \$self->{trace},
            'msg-to-id|mt=s'     => \$self->{msg_to},
            'msg-receive|mr'     => \$self->{msg_receive},
+           'protocol|=s'        => \$self->{protocol},
 	   'testing'            => \$self->{testing}
 			   );
 
@@ -373,6 +375,11 @@ sub new {
 
     if ($self->{login} eq '') {
 	$self->{login} = getlogin || getpwuid($<);
+    }
+
+    $self->{protocol} = uc $self->{protocol};
+    unless ($self->{protocol} eq 'TCP' or $self->{protocol} eq 'UDP') {
+        $self->usage_short("Protocol '$self->{protocol}' not supported, use either tcp or udp.");
     }
 
     # watched sip-id
@@ -564,6 +571,9 @@ Continuation of options for pua.pl
 
   -rp, --remote-port=number: Port number of the SIP proxy, i.e. where 
     to send SIP messages on the remote machine. Default is 5060
+
+  -protocol=prt: Which underlying protocol to use. prt can be either
+    UDP or TCP.
 
   --exec-<pckg>=cmd: Run cmd each time a notification of somebody's 
     <pckg> status is received. Works only in combination with -s 

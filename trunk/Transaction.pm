@@ -99,7 +99,7 @@ sub get_message {
     }
 
     # the Via: headers
-    $message .= 'Via: SIP/2.0/UDP '.$options->{my_host}.':'.$options->{local_port}.
+    $message .= 'Via: SIP/2.0/'.$options->{protocol}.' '.$options->{my_host}.':'.$options->{local_port}.
       ';branch=' . $self->get_branch_param() . CRLF;
 
     # the To: header
