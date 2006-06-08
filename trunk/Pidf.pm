@@ -7,7 +7,7 @@ package Pidf;
 # part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
 #
-# $Date:$ Conny Holzhey
+# $Date$ Conny Holzhey
 
 
 use warnings;
@@ -38,7 +38,7 @@ sub new {
     $self->{options} = shift;      # reference to the options object
 
     $self->{content_type} = 'application/pidf+xml'; 
-    $self->{log}->write(DEBUG, "pidf: new");
+    $self->{log}->write(DEBUG, "Document pidf: new");
     return $self;
 }
 

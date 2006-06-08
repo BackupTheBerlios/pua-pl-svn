@@ -7,7 +7,7 @@ package Presence;
 # part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
 #
-# $Date:$ Conny Holzhey
+# $Date$ Conny Holzhey
 
 
 use warnings;
@@ -43,7 +43,7 @@ sub new {
 
     push @{$self->{documents}}, $doc;
 
-    $self->{log}->write(DEBUG, "presence: new");
+    $self->{log}->write(DEBUG, "Event Package presence: new");
     return $self;
 }
 
