@@ -84,7 +84,7 @@ my $SIP_DOMAIN = '';
 # in case you want to watch somebody else presence, the sip or pres id of that
 # person must be specified here
 
-my $SIP_WATCH_ID = ''; #garbo.local'; 
+my $SIP_WATCH_ID = ''; 
 
 
 
