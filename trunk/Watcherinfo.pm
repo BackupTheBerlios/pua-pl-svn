@@ -7,7 +7,7 @@ package Watcherinfo;
 # part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
 #
-# $Date:$ Conny Holzhey
+# $Date$ Conny Holzhey
 
 
 use warnings;
@@ -39,7 +39,7 @@ sub new {
     $self->{basepackage} = shift; # kind of package that is to be watched
 
     $self->{content_type} = 'application/watcherinfo+xml'; 
-    $self->{log}->write(DEBUG, $self->{basepackage}.".winfo: new");
+    $self->{log}->write(DEBUG, "Document $self->{basepackage}.winfo: new");
     return $self;
 }
 

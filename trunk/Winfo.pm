@@ -6,7 +6,7 @@ package Winfo;
 # part of pua.pl, a simple presence user agent,
 # see http://pua-pl.berlios.de for licence
 #
-# $Date:$ Conny Holzhey
+# $Date$ Conny Holzhey
 
 
 use warnings;
@@ -40,9 +40,12 @@ sub new {
 
     $self->{name}    = $self->{basepackage}.'.winfo'; # package name
 
-    my $doc = new Watcherinfo($self->{log}, $self->{options});
-    push @$self->{documents}, $doc;
-    $self->{log}->write(DEBUG, $self->{name}.": new");
+    my $doc = new Watcherinfo($self->{log}, 
+	                      $self->{options}, 
+                              $self->{basepackage});
+    push @{$self->{documents}}, $doc;
+
+    $self->{log}->write(DEBUG, "Event Package $self->{name}: new");
     return $self;
 }
 

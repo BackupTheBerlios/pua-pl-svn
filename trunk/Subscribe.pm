@@ -24,7 +24,7 @@ use vars qw(@ISA);
 @ISA = qw(Handler);
 
 use Presence;    # my own submodule, event package for presence and pidf doc
-use Watcherinfo; # my own submodule, event package for watcherinfo 
+use Winfo;       # my own submodule, event package for watcherinfo 
 
 
 ###### methods ##############################################################
@@ -46,8 +46,8 @@ sub new {
 
     # create the event package object, sort of if-elsif-factory would do
     if ($self->{package} =~ /^(.*)\.winfo$/) {
-        $self->{event_package} = new Watcherinfo($self->{log}, 
-						 $self->{options}, $1);
+        $self->{event_package} = new Winfo($self->{log}, 
+ 					   $self->{options}, $1);
     } elsif ($self->{package} eq 'presence') {
         $self->{event_package} = new Presence($self->{log}, 
 					      $self->{options});
